@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Market Watch — Personal Investing Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#0b1020;--panel:#141a2e;--panel2:#1c2340;--border:#272f4d;
+    --text:#e8ecf5;--muted:#8893b3;--accent:#5b9dff;--accent2:#7c5bff;
+    --up:#27d989;--down:#ff5470;--warn:#ffb84d;
+  }
+  body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.5}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  button{font-family:inherit}
+
+  header{background:linear-gradient(135deg,#141a2e,#1c2340);border-bottom:1px solid var(--border);padding:18px 24px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+  .logo{font-size:1.3rem;font-weight:700;letter-spacing:.5px;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .tagline{color:var(--muted);font-size:.85rem}
+  .header-right{margin-left:auto;display:flex;align-items:center;gap:12px;font-size:.85rem;color:var(--muted)}
+  .last-updated{font-variant-numeric:tabular-nums}
+
+  nav.tabs{display:flex;gap:0;background:var(--panel);border-bottom:1px solid var(--border);padding:0 24px;overflow-x:auto}
+  .tab{padding:14px 20px;cursor:pointer;background:transparent;color:var(--muted);border:none;font-size:.95rem;font-weight:500;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap}
+  .tab:hover{color:var(--text)}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+  main{padding:24px;max-width:1400px;margin:0 auto}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:18px}
+  .panel h2{font-size:1.1rem;margin-bottom:14px;display:flex;align-items:center;gap:10px}
+  .panel h2 .badge{font-size:.7rem;background:var(--panel2);color:var(--muted);padding:3px 8px;border-radius:10px;font-weight:500}
+
+  .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+  input[type=text],input[type=number],select{background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:.9rem;font-family:inherit;outline:none;transition:border-color .15s}
+  input:focus,select:focus{border-color:var(--accent)}
+  .btn{background:var(--accent);color:white;border:none;border-radius:8px;padding:9px 16px;font-size:.9rem;font-weight:500;cursor:pointer;transition:filter .15s,transform .05s}
+  .btn:hover{filter:brightness(1.1)}
+  .btn:active{transform:translateY(1px)}
+  .btn.ghost{background:var(--panel2);color:var(--text);border:1px solid var(--border)}
+  .btn.ghost:hover{background:var(--border)}
+  .btn.danger{background:var(--down)}
+  .btn.small{padding:6px 10px;font-size:.8rem}
+
+  .switch{display:inline-flex;align-items:center;gap:8px;color:var(--muted);font-size:.85rem;cursor:pointer;user-select:none}
+  .switch input{display:none}
+  .switch .knob{width:34px;height:18px;background:var(--panel2);border:1px solid var(--border);border-radius:10px;position:relative;transition:background .2s}
+  .switch .knob::after{content:"";position:absolute;top:1px;left:1px;width:14px;height:14px;background:var(--muted);border-radius:50%;transition:transform .2s,background .2s}
+  .switch input:checked + .knob{background:rgba(91,157,255,.25);border-color:var(--accent)}
+  .switch input:checked + .knob::after{transform:translateX(16px);background:var(--accent)}
+
+  /* Watchlist cards */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+  .ticker-card{background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:14px 14px 14px 14px;padding-right:34px;position:relative;transition:border-color .15s}
+  .ticker-card:hover{border-color:var(--accent)}
+  .ticker-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px}
+  .ticker-symbol{font-size:1.05rem;font-weight:700;letter-spacing:.5px}
+  .ticker-name{font-size:.75rem;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px}
+  .ticker-type{font-size:.65rem;background:var(--panel);padding:2px 7px;border-radius:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  .ticker-price{font-size:1.5rem;font-weight:700;font-variant-numeric:tabular-nums;margin-top:6px}
+  .ticker-change{font-size:.85rem;font-weight:600;font-variant-numeric:tabular-nums;margin-top:2px}
+  .up{color:var(--up)}
+  .down{color:var(--down)}
+  .neutral{color:var(--muted)}
+  .spark{margin-top:8px;height:36px;width:100%}
+  .ticker-actions{position:absolute;top:8px;right:8px;display:flex;gap:4px}
+  .icon-btn{background:transparent;color:var(--muted);border:none;cursor:pointer;padding:4px;border-radius:4px;font-size:.85rem;line-height:1}
+  .icon-btn:hover{color:var(--down);background:var(--panel)}
+  .empty-state{text-align:center;padding:40px 20px;color:var(--muted)}
+  .err{color:var(--warn);font-size:.8rem;margin-top:6px}
+  .loading{color:var(--muted);font-style:italic;font-size:.9rem}
+
+  /* News */
+  .news-item{padding:14px 0;border-bottom:1px solid var(--border)}
+  .news-item:last-child{border-bottom:none}
+  .news-title{font-size:.98rem;font-weight:500;margin-bottom:4px;line-height:1.35}
+  .news-meta{font-size:.78rem;color:var(--muted);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .news-source{background:var(--panel2);padding:2px 7px;border-radius:8px;font-size:.7rem}
+  .news-desc{font-size:.85rem;color:var(--muted);margin-top:6px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+
+  /* Portfolio */
+  table{width:100%;border-collapse:collapse;font-size:.9rem}
+  th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--border)}
+  th{color:var(--muted);font-weight:500;font-size:.78rem;text-transform:uppercase;letter-spacing:.5px;background:var(--panel2)}
+  td{font-variant-numeric:tabular-nums}
+  td.sym{font-weight:600}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px}
+  .stat{background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:14px}
+  .stat-label{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+  .stat-value{font-size:1.5rem;font-weight:700;font-variant-numeric:tabular-nums}
+  .portfolio-cols{display:grid;grid-template-columns:1.5fr 1fr;gap:18px;align-items:start}
+  @media (max-width:900px){.portfolio-cols{grid-template-columns:1fr}}
+  .add-form{display:grid;grid-template-columns:1fr 1fr 100px 130px auto;gap:8px;margin-bottom:16px}
+  @media (max-width:700px){.add-form{grid-template-columns:1fr 1fr}}
+
+  /* Learn */
+  .concepts{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+  .concept{background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:16px}
+  .concept h3{font-size:1rem;margin-bottom:8px;color:var(--accent)}
+  .concept p{font-size:.88rem;color:var(--text);line-height:1.55}
+  .concept .takeaway{margin-top:10px;font-size:.8rem;color:var(--muted);font-style:italic;border-left:2px solid var(--accent);padding-left:10px}
+
+  /* Tools */
+  .tools-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media (max-width:800px){.tools-grid{grid-template-columns:1fr}}
+  .calc-row{display:grid;grid-template-columns:1fr 130px;gap:8px;margin-bottom:8px;align-items:center}
+  .calc-label{font-size:.85rem;color:var(--muted)}
+  .calc-result{margin-top:14px;padding:12px;background:var(--panel2);border-radius:8px;border:1px solid var(--border)}
+  .calc-result .big{font-size:1.6rem;font-weight:700;color:var(--up);font-variant-numeric:tabular-nums}
+  .glossary dt{font-weight:600;color:var(--accent);margin-top:10px;font-size:.9rem}
+  .glossary dd{font-size:.85rem;color:var(--muted);margin-left:0;margin-top:2px;line-height:1.5}
+  .fx-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:.9rem}
+  .fx-row:last-child{border:none}
+  .fx-pair{color:var(--muted)}
+  .fx-rate{font-weight:600;font-variant-numeric:tabular-nums}
+
+  .tab-content{display:none}
+  .tab-content.active{display:block}
+
+  .disclaimer{background:rgba(255,184,77,.08);border:1px solid rgba(255,184,77,.3);border-radius:10px;padding:14px 18px;margin:18px 24px 24px;color:#ffd9a3;font-size:.82rem;line-height:1.55;max-width:1400px;margin-left:auto;margin-right:auto}
+  .disclaimer strong{color:var(--warn)}
+
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-track{background:var(--bg)}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:5px}
+  ::-webkit-scrollbar-thumb:hover{background:var(--muted)}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">📊 Market Watch</div>
+    <div class="tagline">Your personal investing dashboard — data, not advice</div>
+  </div>
+  <div class="header-right">
+    <span id="connection-status" class="neutral">●</span>
+    <span class="last-updated" id="last-updated">Never updated</span>
+  </div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button class="tab active" data-tab="dashboard">Dashboard</button>
+  <button class="tab" data-tab="news">News</button>
+  <button class="tab" data-tab="portfolio">Portfolio</button>
+  <button class="tab" data-tab="learn">Learn</button>
+  <button class="tab" data-tab="tools">Tools</button>
+</nav>
+
+<main>
+  <!-- DASHBOARD -->
+  <section class="tab-content active" id="tab-dashboard">
+    <div class="panel">
+      <h2>Watchlist <span class="badge" id="watchlist-count">0 items</span></h2>
+      <div class="controls">
+        <input type="text" id="add-symbol" placeholder="Add ticker (e.g. AAPL, SPY, BTC)" style="flex:1;min-width:180px">
+        <select id="add-type">
+          <option value="stock">Stock / ETF</option>
+          <option value="crypto">Crypto</option>
+        </select>
+        <button class="btn" id="add-btn">＋ Add</button>
+        <label class="switch" style="margin-left:auto">
+          <input type="checkbox" id="autorefresh" checked>
+          <span class="knob"></span>
+          <span>Auto-refresh</span>
+        </label>
+        <select id="refresh-interval" style="width:auto">
+          <option value="30000">30s</option>
+          <option value="60000" selected>1 min</option>
+          <option value="300000">5 min</option>
+          <option value="900000">15 min</option>
+        </select>
+        <button class="btn ghost" id="refresh-now">↻ Refresh now</button>
+      </div>
+      <div id="watchlist" class="grid">
+        <div class="empty-state">
+          Add a ticker symbol above to start tracking. Try <strong>AAPL</strong>, <strong>SPY</strong>, <strong>VOO</strong>, or switch to Crypto and add <strong>BTC</strong>.
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Major Indices &amp; Benchmarks</h2>
+      <div id="benchmarks" class="grid">
+        <div class="loading">Loading benchmarks…</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- NEWS -->
+  <section class="tab-content" id="tab-news">
+    <div class="panel">
+      <h2>Financial News</h2>
+      <div class="controls">
+        <select id="news-source" style="flex:1;max-width:300px">
+          <option value="general">General market headlines</option>
+          <option value="watchlist">Filtered to my watchlist</option>
+          <option value="crypto">Crypto news</option>
+        </select>
+        <button class="btn ghost" id="news-refresh">↻ Refresh</button>
+      </div>
+      <div id="news-list">
+        <div class="loading">Loading news…</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PORTFOLIO -->
+  <section class="tab-content" id="tab-portfolio">
+    <div class="panel">
+      <h2>My Portfolio</h2>
+      <div class="add-form">
+        <input type="text" id="port-symbol" placeholder="Symbol (AAPL, BTC)">
+        <select id="port-type">
+          <option value="stock">Stock / ETF</option>
+          <option value="crypto">Crypto</option>
+        </select>
+        <input type="number" id="port-shares" placeholder="Qty" step="any" min="0">
+        <input type="number" id="port-cost" placeholder="Cost / unit" step="any" min="0">
+        <button class="btn" id="port-add">＋ Add holding</button>
+      </div>
+
+      <div class="stats" id="port-stats">
+        <div class="stat"><div class="stat-label">Total Value</div><div class="stat-value" id="port-total">—</div></div>
+        <div class="stat"><div class="stat-label">Total Cost</div><div class="stat-value" id="port-cost-total">—</div></div>
+        <div class="stat"><div class="stat-label">Unrealized P/L</div><div class="stat-value" id="port-pl">—</div></div>
+        <div class="stat"><div class="stat-label">Return %</div><div class="stat-value" id="port-return">—</div></div>
+      </div>
+
+      <div class="portfolio-cols">
+        <div>
+          <table id="port-table">
+            <thead>
+              <tr>
+                <th>Symbol</th><th>Qty</th><th>Cost</th><th>Price</th><th>Value</th><th>P/L</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="port-tbody">
+              <tr><td colspan="7" class="empty-state" style="border:none">No holdings yet. Add one above to see your portfolio analytics.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <h2 style="font-size:.95rem;margin-bottom:10px">Allocation</h2>
+          <canvas id="alloc-chart" style="max-height:280px"></canvas>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LEARN -->
+  <section class="tab-content" id="tab-learn">
+    <div class="panel">
+      <h2>Investing Concepts</h2>
+      <p style="color:var(--muted);margin-bottom:14px;font-size:.9rem">Foundational ideas to help you make your own decisions. Read these before reacting to anything in the news tab.</p>
+      <div class="concepts" id="concepts"></div>
+    </div>
+  </section>
+
+  <!-- TOOLS -->
+  <section class="tab-content" id="tab-tools">
+    <div class="tools-grid">
+      <div class="panel">
+        <h2>Compound Growth Calculator</h2>
+        <div class="calc-row"><label class="calc-label">Initial amount ($)</label><input type="number" id="calc-initial" value="10000" step="100"></div>
+        <div class="calc-row"><label class="calc-label">Monthly contribution ($)</label><input type="number" id="calc-monthly" value="500" step="50"></div>
+        <div class="calc-row"><label class="calc-label">Annual return (%)</label><input type="number" id="calc-rate" value="7" step="0.1"></div>
+        <div class="calc-row"><label class="calc-label">Years</label><input type="number" id="calc-years" value="20" min="1" max="60"></div>
+        <div class="calc-result">
+          <div style="color:var(--muted);font-size:.8rem">Projected value</div>
+          <div class="big" id="calc-out">$0</div>
+          <div style="color:var(--muted);font-size:.78rem;margin-top:4px" id="calc-detail">—</div>
+        </div>
+        <p style="color:var(--muted);font-size:.75rem;margin-top:10px">Compounding monthly. Past returns don't predict future returns; this is just a math projection.</p>
+      </div>
+
+      <div class="panel">
+        <h2>FX Rates <span class="badge" id="fx-updated">—</span></h2>
+        <p style="color:var(--muted);font-size:.85rem;margin-bottom:10px">Major currency pairs vs USD.</p>
+        <div id="fx-list">
+          <div class="loading">Loading FX rates…</div>
+        </div>
+      </div>
+
+      <div class="panel" style="grid-column:1 / -1">
+        <h2>Glossary</h2>
+        <dl class="glossary" id="glossary"></dl>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="disclaimer">
+  <strong>⚠️ Not investment advice.</strong> This dashboard shows market data, news, and educational content for informational purposes only. Nothing here is a recommendation to buy, sell, or hold any security. Prices may be delayed or inaccurate. Always do your own research and consider consulting a licensed financial advisor before making investment decisions.
+</div>
+
+<script>
+/* ============================================================
+   MARKET WATCH — single-file investing dashboard
+   Data sources:
+   - Stocks/ETFs/FX: Yahoo Finance via allorigins CORS proxy
+   - Crypto: CoinGecko public API (CORS-friendly)
+   - News: Yahoo Finance RSS via allorigins
+   No API keys required.
+============================================================ */
+
+// Ordered fastest-to-slowest based on observed latency. allorigins is kept as a
+// last-resort backup because it sometimes takes 15+ seconds.
+const PROXIES = [
+  (u) => 'https://corsproxy.io/?' + encodeURIComponent(u),
+  (u) => 'https://api.codetabs.com/v1/proxy/?quest=' + encodeURIComponent(u),
+  (u) => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u)
+];
+const PROXY_TIMEOUT_MS = 6000;
+const CG = 'https://api.coingecko.com/api/v3';
+
+// Fetch with a hard timeout — slow proxies must NOT block the UI for 15+ seconds.
+async function fetchWithTimeout(url, ms) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  try { return await fetch(url, { signal: ctrl.signal }); }
+  finally { clearTimeout(timer); }
+}
+
+// Returns parsed body. `parse` is a function (text) => result that should throw if the
+// response is not the expected format — that triggers a retry on the next proxy.
+async function proxyFetchParsed(url, parse) {
+  let lastErr;
+  for (const wrap of PROXIES) {
+    try {
+      const r = await fetchWithTimeout(wrap(url), PROXY_TIMEOUT_MS);
+      if (!r.ok) { lastErr = new Error(`HTTP ${r.status}`); continue; }
+      const text = await r.text();
+      try { return parse(text); }
+      catch(e) { lastErr = new Error('Bad response: ' + e.message); }
+    } catch(e) { lastErr = e; }
+  }
+  throw lastErr || new Error('All proxies failed');
+}
+const proxyFetchJson = (url) => proxyFetchParsed(url, JSON.parse);
+const proxyFetchText = (url) => proxyFetchParsed(url, t => {
+  // Reject obvious error pages so we try the next proxy.
+  if (/<!DOCTYPE html/i.test(t.slice(0, 100)) && !t.includes('<rss') && !t.includes('<feed')) {
+    throw new Error('Got HTML instead of feed');
+  }
+  return t;
+});
+
+// ---- Symbol -> CoinGecko id mapping (common ones; falls back to /search) ----
+const CRYPTO_MAP = {
+  BTC:'bitcoin', ETH:'ethereum', SOL:'solana', ADA:'cardano', DOGE:'dogecoin',
+  XRP:'ripple', BNB:'binancecoin', AVAX:'avalanche-2', MATIC:'matic-network',
+  DOT:'polkadot', LINK:'chainlink', LTC:'litecoin', UNI:'uniswap', ATOM:'cosmos',
+  NEAR:'near', SHIB:'shiba-inu', TRX:'tron', BCH:'bitcoin-cash', XLM:'stellar',
+  USDT:'tether', USDC:'usd-coin'
+};
+const cryptoIdCache = {};
+
+// ---- Persistent state ----
+const store = {
+  load(key, def){ try{ return JSON.parse(localStorage.getItem(key)) ?? def; }catch{ return def; } },
+  save(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
+};
+let watchlist = store.load('mw_watchlist', []);   // [{sym, type}]
+let portfolio = store.load('mw_portfolio', []);   // [{sym, type, qty, cost}]
+let priceCache = {};                              // sym -> {price, change, changePct, name, sparkline}
+
+// ---- Utils ----
+const $ = (id) => document.getElementById(id);
+const fmt$ = (v, d=2) => v == null || isNaN(v) ? '—' : '$' + Number(v).toLocaleString(undefined, {minimumFractionDigits:d,maximumFractionDigits:d});
+const fmtPct = (v) => v == null || isNaN(v) ? '—' : (v>=0?'+':'') + Number(v).toFixed(2) + '%';
+const fmtNum = (v, d=4) => v == null || isNaN(v) ? '—' : Number(v).toLocaleString(undefined, {maximumFractionDigits:d});
+const dirClass = (v) => v > 0 ? 'up' : v < 0 ? 'down' : 'neutral';
+const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const _decodeEl = document.createElement('textarea');
+const decodeEntities = (s) => { _decodeEl.innerHTML = String(s ?? ''); return _decodeEl.value; };
+
+// ---- Tabs ----
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    $('tab-' + t.dataset.tab).classList.add('active');
+    if (t.dataset.tab === 'news') loadNews();
+    if (t.dataset.tab === 'tools') loadFx();
+    if (t.dataset.tab === 'portfolio') refreshPortfolio();
+  });
+});
+
+// =========================================================
+// CRYPTO FETCH
+// =========================================================
+async function resolveCryptoId(sym){
+  const upper = sym.toUpperCase();
+  if (CRYPTO_MAP[upper]) return CRYPTO_MAP[upper];
+  if (cryptoIdCache[upper]) return cryptoIdCache[upper];
+  try {
+    const r = await fetch(`${CG}/search?query=${encodeURIComponent(sym)}`);
+    const j = await r.json();
+    const hit = (j.coins || []).find(c => c.symbol?.toUpperCase() === upper) || j.coins?.[0];
+    if (hit) { cryptoIdCache[upper] = hit.id; return hit.id; }
+  } catch(e) {}
+  return null;
+}
+
+function cryptoMarketRowToQuote(sym, c){
+  return {
+    sym: sym.toUpperCase(),
+    name: c.name,
+    price: c.current_price,
+    change: c.price_change_24h,
+    changePct: c.price_change_percentage_24h,
+    sparkline: c.sparkline_in_7d?.price?.slice(-48) || [],
+    type: 'crypto'
+  };
+}
+
+async function fetchCryptoQuote(sym){
+  const id = await resolveCryptoId(sym);
+  if (!id) throw new Error(`Unknown crypto symbol: ${sym}`);
+  const r = await fetch(`${CG}/coins/markets?vs_currency=usd&ids=${id}&sparkline=true&price_change_percentage=24h`);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const arr = await r.json();
+  const c = arr[0];
+  if (!c) throw new Error(`No data for ${sym}`);
+  return cryptoMarketRowToQuote(sym, c);
+}
+
+// Batched fetch: one CoinGecko call for many crypto symbols.
+// Returns { sym -> quote-or-error }.
+async function fetchCryptoBatch(syms){
+  if (!syms.length) return {};
+  const idMap = {}; // sym -> id
+  for (const sym of syms) {
+    const id = await resolveCryptoId(sym);
+    if (id) idMap[sym] = id;
+  }
+  const ids = Object.values(idMap);
+  if (!ids.length) {
+    return Object.fromEntries(syms.map(s => [s, { error: `Unknown crypto symbol: ${s}` }]));
+  }
+  const out = {};
+  try {
+    const r = await fetch(`${CG}/coins/markets?vs_currency=usd&ids=${ids.join(',')}&sparkline=true&price_change_percentage=24h`);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const arr = await r.json();
+    const byId = Object.fromEntries(arr.map(c => [c.id, c]));
+    for (const sym of syms) {
+      const id = idMap[sym];
+      if (!id) { out[sym] = { error: `Unknown crypto symbol: ${sym}` }; continue; }
+      const c = byId[id];
+      out[sym] = c ? cryptoMarketRowToQuote(sym, c) : { error: `No data for ${sym}` };
+    }
+  } catch(e) {
+    for (const sym of syms) out[sym] = { error: e.message || 'Crypto fetch failed' };
+  }
+  return out;
+}
+
+// =========================================================
+// STOCK FETCH (Yahoo via proxy)
+// =========================================================
+async function fetchStockQuote(sym){
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=1d&interval=5m`;
+  const j = await proxyFetchJson(url);
+  const result = j.chart?.result?.[0];
+  if (!result) throw new Error(j.chart?.error?.description || `No data for ${sym}`);
+  const meta = result.meta;
+  const price = meta.regularMarketPrice;
+  const prev = meta.chartPreviousClose ?? meta.previousClose;
+  const change = price - prev;
+  const changePct = (change / prev) * 100;
+  const closes = (result.indicators?.quote?.[0]?.close || []).filter(x => x != null);
+  return {
+    sym: sym.toUpperCase(),
+    name: meta.longName || meta.shortName || meta.symbol,
+    price, change, changePct,
+    sparkline: closes.length ? closes : [prev, price],
+    type: 'stock'
+  };
+}
+
+async function fetchQuote(item){
+  return item.type === 'crypto' ? fetchCryptoQuote(item.sym) : fetchStockQuote(item.sym);
+}
+
+// =========================================================
+// SPARKLINE (inline SVG)
+// =========================================================
+function sparkSvg(points, change){
+  if (!points || points.length < 2) return '';
+  const w = 240, h = 36, pad = 2;
+  const min = Math.min(...points), max = Math.max(...points);
+  const range = max - min || 1;
+  const stepX = (w - pad*2) / (points.length - 1);
+  let d = '';
+  points.forEach((p,i) => {
+    const x = pad + i*stepX;
+    const y = pad + (h - pad*2) * (1 - (p - min) / range);
+    d += (i===0?'M':'L') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+  });
+  const color = change >= 0 ? 'var(--up)' : 'var(--down)';
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><path d="${d}" fill="none" stroke="${color}" stroke-width="1.5"/></svg>`;
+}
+
+// =========================================================
+// WATCHLIST
+// =========================================================
+function renderWatchlist(){
+  const el = $('watchlist');
+  $('watchlist-count').textContent = `${watchlist.length} item${watchlist.length===1?'':'s'}`;
+  if (!watchlist.length) {
+    el.innerHTML = `<div class="empty-state">Add a ticker symbol above to start tracking. Try <strong>AAPL</strong>, <strong>SPY</strong>, <strong>VOO</strong>, or switch to Crypto and add <strong>BTC</strong>.</div>`;
+    return;
+  }
+  el.innerHTML = watchlist.map(item => {
+    const key = item.type + ':' + item.sym;
+    const data = priceCache[key];
+    const err = data?.error;
+    if (err) {
+      return `<div class="ticker-card">
+        <div class="ticker-actions"><button class="icon-btn" data-remove="${key}" title="Remove">✕</button></div>
+        <div class="ticker-head"><div><div class="ticker-symbol">${escapeHtml(item.sym)}</div></div><span class="ticker-type">${item.type}</span></div>
+        <div class="err">⚠ ${escapeHtml(err)}</div>
+      </div>`;
+    }
+    if (!data) {
+      return `<div class="ticker-card">
+        <div class="ticker-actions"><button class="icon-btn" data-remove="${key}" title="Remove">✕</button></div>
+        <div class="ticker-head"><div><div class="ticker-symbol">${escapeHtml(item.sym)}</div></div><span class="ticker-type">${item.type}</span></div>
+        <div class="loading">Loading…</div>
+      </div>`;
+    }
+    return `<div class="ticker-card">
+      <div class="ticker-actions">
+        <button class="icon-btn" data-remove="${key}" title="Remove">✕</button>
+      </div>
+      <div class="ticker-head">
+        <div>
+          <div class="ticker-symbol">${escapeHtml(data.sym)}</div>
+          <div class="ticker-name">${escapeHtml(data.name || '')}</div>
+        </div>
+        <span class="ticker-type">${data.type}</span>
+      </div>
+      <div class="ticker-price">${fmt$(data.price, data.price < 1 ? 6 : 2)}</div>
+      <div class="ticker-change ${dirClass(data.change)}">
+        ${data.change>=0?'▲':'▼'} ${fmt$(Math.abs(data.change), data.price < 1 ? 6 : 2)} (${fmtPct(data.changePct)})
+      </div>
+      ${sparkSvg(data.sparkline, data.change)}
+    </div>`;
+  }).join('');
+  el.querySelectorAll('[data-remove]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const [type, sym] = btn.dataset.remove.split(':');
+      watchlist = watchlist.filter(w => !(w.type===type && w.sym===sym));
+      store.save('mw_watchlist', watchlist);
+      delete priceCache[btn.dataset.remove];
+      renderWatchlist();
+    });
+  });
+}
+
+async function doRefresh(){
+  const btn = $('refresh-now');
+  btn.disabled = true;
+  const origLabel = btn.textContent;
+  btn.textContent = '⟳ Refreshing…';
+  const restoreBtn = () => { btn.disabled = false; btn.textContent = origLabel; };
+  try {
+  const stocks = watchlist.filter(w => w.type === 'stock');
+  const cryptos = watchlist.filter(w => w.type === 'crypto');
+
+  const stockPromises = stocks.map(async item => {
+    const key = 'stock:' + item.sym;
+    try { priceCache[key] = await fetchStockQuote(item.sym); }
+    catch(e) { priceCache[key] = { error: e.message || 'Failed to fetch' }; }
+  });
+
+  const cryptoPromise = (async () => {
+    const batch = await fetchCryptoBatch(cryptos.map(w => w.sym));
+    for (const sym of Object.keys(batch)) priceCache['crypto:' + sym] = batch[sym];
+  })();
+
+  await Promise.all([...stockPromises, cryptoPromise]);
+  renderWatchlist();
+  $('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+  const anyErr = watchlist.some(w => priceCache[w.type+':'+w.sym]?.error);
+  $('connection-status').className = anyErr ? 'down' : 'up';
+  $('connection-status').title = anyErr ? 'Some quotes failed to fetch' : 'All quotes up to date';
+  if (currentTab() === 'portfolio') renderPortfolioTable();
+  } finally { restoreBtn(); }
+}
+
+// Coalesce concurrent calls but ALWAYS run a follow-up refresh if one was requested
+// while a previous one was in flight — otherwise newly-added tickers would never load
+// and "Refresh now" clicks during a refresh would be silently dropped.
+let refreshInFlight = null;
+let refreshPending = false;
+async function refreshAll(){
+  if (refreshInFlight) { refreshPending = true; return refreshInFlight; }
+  do {
+    refreshPending = false;
+    refreshInFlight = doRefresh();
+    try { await refreshInFlight; }
+    catch(e) { console.error('refresh failed', e); }
+    finally { refreshInFlight = null; }
+  } while (refreshPending);
+}
+
+// Add ticker
+$('add-btn').addEventListener('click', addTicker);
+$('add-symbol').addEventListener('keydown', e => { if (e.key==='Enter') addTicker(); });
+function addTicker(){
+  const sym = $('add-symbol').value.trim().toUpperCase();
+  const type = $('add-type').value;
+  if (!sym) return;
+  if (watchlist.some(w => w.sym===sym && w.type===type)) {
+    $('add-symbol').value = '';
+    return;
+  }
+  watchlist.push({sym, type});
+  store.save('mw_watchlist', watchlist);
+  $('add-symbol').value = '';
+  renderWatchlist();
+  refreshAll();
+}
+
+// =========================================================
+// AUTO-REFRESH
+// =========================================================
+let refreshTimer = null;
+function setupAutoRefresh(){
+  if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
+  if (!$('autorefresh').checked) return;
+  const ms = parseInt($('refresh-interval').value, 10);
+  refreshTimer = setInterval(() => {
+    if (document.hidden) return; // skip when tab not visible
+    refreshAll();
+  }, ms);
+}
+$('autorefresh').addEventListener('change', setupAutoRefresh);
+$('refresh-interval').addEventListener('change', setupAutoRefresh);
+$('refresh-now').addEventListener('click', refreshAll);
+// When user comes back to a tab that's been hidden longer than the refresh interval,
+// refresh once immediately so they don't see stale data.
+let lastBackgroundedAt = 0;
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { lastBackgroundedAt = Date.now(); return; }
+  const ms = parseInt($('refresh-interval').value, 10);
+  if ($('autorefresh').checked && lastBackgroundedAt && (Date.now() - lastBackgroundedAt) > ms) {
+    refreshAll();
+  }
+});
+
+const currentTab = () => document.querySelector('.tab.active')?.dataset.tab;
+
+// =========================================================
+// BENCHMARKS
+// =========================================================
+const BENCHMARKS = [
+  {sym:'^GSPC', type:'stock', label:'S&P 500'},
+  {sym:'^IXIC', type:'stock', label:'Nasdaq Composite'},
+  {sym:'^DJI',  type:'stock', label:'Dow Jones'},
+  {sym:'^RUT',  type:'stock', label:'Russell 2000'},
+  {sym:'^VIX',  type:'stock', label:'Volatility (VIX)'},
+  {sym:'GC=F',  type:'stock', label:'Gold'},
+  {sym:'CL=F',  type:'stock', label:'Crude Oil'},
+  {sym:'^TNX',  type:'stock', label:'10-Yr Treasury Yield'}
+];
+let benchCache = {};
+async function loadBenchmarks(){
+  await Promise.all(BENCHMARKS.map(async b => {
+    try { benchCache[b.sym] = await fetchStockQuote(b.sym); benchCache[b.sym].label = b.label; }
+    catch(e){ benchCache[b.sym] = {error:e.message, label:b.label, sym:b.sym}; }
+  }));
+  renderBenchmarks();
+}
+function renderBenchmarks(){
+  const el = $('benchmarks');
+  el.innerHTML = BENCHMARKS.map(b => {
+    const d = benchCache[b.sym];
+    if (!d) return `<div class="ticker-card"><div class="ticker-symbol">${b.label}</div><div class="loading">…</div></div>`;
+    if (d.error) return `<div class="ticker-card"><div class="ticker-symbol">${b.label}</div><div class="err">${escapeHtml(d.error)}</div></div>`;
+    return `<div class="ticker-card">
+      <div class="ticker-head">
+        <div><div class="ticker-symbol">${b.label}</div><div class="ticker-name">${escapeHtml(b.sym)}</div></div>
+      </div>
+      <div class="ticker-price">${fmtNum(d.price, 2)}</div>
+      <div class="ticker-change ${dirClass(d.change)}">${d.change>=0?'▲':'▼'} ${fmtNum(Math.abs(d.change),2)} (${fmtPct(d.changePct)})</div>
+      ${sparkSvg(d.sparkline, d.change)}
+    </div>`;
+  }).join('');
+}
+
+// =========================================================
+// NEWS
+// =========================================================
+async function loadNews(){
+  const src = $('news-source').value;
+  const list = $('news-list');
+  list.innerHTML = '<div class="loading">Loading news…</div>';
+  let url;
+  if (src === 'crypto') {
+    url = 'https://www.coindesk.com/arc/outboundfeeds/rss/';
+  } else if (src === 'watchlist') {
+    const tickers = watchlist.map(w => w.sym);
+    if (!tickers.length) {
+      list.innerHTML = '<div class="empty-state">Add tickers to your watchlist to see related news.</div>';
+      return;
+    }
+    const query = tickers.map(t => `"${t}"`).join(' OR ') + ' stock';
+    url = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`;
+  } else {
+    url = 'https://www.cnbc.com/id/100003114/device/rss/rss.html';
+  }
+  try {
+    const text = await proxyFetchText(url);
+    const doc = new DOMParser().parseFromString(text, 'text/xml');
+    const items = Array.from(doc.querySelectorAll('item')).slice(0, 25);
+    if (!items.length) { list.innerHTML = '<div class="empty-state">No news available right now.</div>'; return; }
+    list.innerHTML = items.map(it => {
+      let title = decodeEntities(it.querySelector('title')?.textContent || '(untitled)');
+      const link = it.querySelector('link')?.textContent || '#';
+      // RSS descriptions may contain HTML and HTML entities. Decode first, then strip tags.
+      const rawDesc = decodeEntities(it.querySelector('description')?.textContent || '');
+      const desc = rawDesc.replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim().slice(0, 280);
+      const pub = it.querySelector('pubDate')?.textContent || '';
+      const date = pub ? new Date(pub) : null;
+      const ago = date ? timeAgo(date) : '';
+      // Google News titles end with " - SourceName" — extract that as the badge
+      // and strip it from the title. Also drop the description, which just repeats
+      // "<title> <source>".
+      let source;
+      let showDesc = !!desc;
+      const m = title.match(/^(.*) - ([^-]{2,40})$/);
+      const linkHost = (() => { try { return new URL(link).hostname.replace('www.',''); } catch { return ''; } })();
+      if (linkHost === 'news.google.com' && m) {
+        title = m[1];
+        source = m[2];
+        showDesc = false;
+      } else {
+        source = linkHost;
+      }
+      return `<div class="news-item">
+        <div class="news-title"><a href="${escapeHtml(link)}" target="_blank" rel="noopener">${escapeHtml(title)}</a></div>
+        <div class="news-meta"><span class="news-source">${escapeHtml(source)}</span><span>${ago}</span></div>
+        ${showDesc ? `<div class="news-desc">${escapeHtml(desc)}</div>` : ''}
+      </div>`;
+    }).join('');
+  } catch(e) {
+    list.innerHTML = `<div class="err">Failed to load news: ${escapeHtml(e.message)}</div>`;
+  }
+}
+function timeAgo(d){
+  const s = (Date.now() - d.getTime())/1000;
+  if (s < 60) return Math.floor(s)+'s ago';
+  if (s < 3600) return Math.floor(s/60)+'m ago';
+  if (s < 86400) return Math.floor(s/3600)+'h ago';
+  return Math.floor(s/86400)+'d ago';
+}
+$('news-refresh').addEventListener('click', loadNews);
+$('news-source').addEventListener('change', loadNews);
+
+// =========================================================
+// PORTFOLIO
+// =========================================================
+let allocChart = null;
+function renderPortfolioTable(){
+  const tbody = $('port-tbody');
+  if (!portfolio.length) {
+    tbody.innerHTML = `<tr><td colspan="7" class="empty-state" style="border:none">No holdings yet. Add one above to see your portfolio analytics.</td></tr>`;
+    $('port-total').textContent = $('port-cost-total').textContent = $('port-pl').textContent = $('port-return').textContent = '—';
+    if (allocChart) { allocChart.destroy(); allocChart = null; }
+    return;
+  }
+  let totalValue = 0, totalCost = 0;
+  const rows = portfolio.map((h, i) => {
+    const key = h.type + ':' + h.sym;
+    const data = priceCache[key];
+    const price = data?.price;
+    const value = price != null ? price * h.qty : null;
+    const cost = h.cost * h.qty;
+    const pl = value != null ? value - cost : null;
+    if (value != null) totalValue += value;
+    totalCost += cost;
+    return `<tr>
+      <td class="sym">${escapeHtml(h.sym)} <span style="color:var(--muted);font-size:.7rem">${h.type}</span></td>
+      <td>${fmtNum(h.qty, 6)}</td>
+      <td>${fmt$(h.cost, h.cost < 1 ? 6 : 2)}</td>
+      <td>${price != null ? fmt$(price, price < 1 ? 6 : 2) : (data?.error ? '<span class="err">err</span>' : '<span class="loading">…</span>')}</td>
+      <td>${value != null ? fmt$(value) : '—'}</td>
+      <td class="${pl != null ? dirClass(pl) : ''}">${pl != null ? (pl>=0?'+':'') + fmt$(Math.abs(pl)) : '—'}</td>
+      <td><button class="icon-btn" data-rm-port="${i}" title="Remove">✕</button></td>
+    </tr>`;
+  }).join('');
+  tbody.innerHTML = rows;
+  $('port-total').textContent = fmt$(totalValue);
+  $('port-cost-total').textContent = fmt$(totalCost);
+  const pl = totalValue - totalCost;
+  $('port-pl').textContent = (pl>=0?'+':'') + fmt$(Math.abs(pl));
+  $('port-pl').className = 'stat-value ' + dirClass(pl);
+  const ret = totalCost > 0 ? (pl / totalCost) * 100 : 0;
+  $('port-return').textContent = fmtPct(ret);
+  $('port-return').className = 'stat-value ' + dirClass(ret);
+
+  tbody.querySelectorAll('[data-rm-port]').forEach(b => {
+    b.addEventListener('click', () => {
+      portfolio.splice(parseInt(b.dataset.rmPort,10), 1);
+      store.save('mw_portfolio', portfolio);
+      renderPortfolioTable();
+    });
+  });
+  drawAllocChart(totalValue);
+}
+function drawAllocChart(total){
+  const ctx = $('alloc-chart');
+  if (!ctx || !total) return;
+  const labels = [], values = [];
+  portfolio.forEach(h => {
+    const data = priceCache[h.type + ':' + h.sym];
+    if (data?.price != null) {
+      labels.push(h.sym);
+      values.push(data.price * h.qty);
+    }
+  });
+  if (allocChart) allocChart.destroy();
+  allocChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: ['#5b9dff','#7c5bff','#27d989','#ff5470','#ffb84d','#ff9ec7','#48d3e0','#a78bfa','#f472b6','#fbbf24'],
+        borderColor: '#141a2e',
+        borderWidth: 2
+      }]
+    },
+    options: {
+      plugins:{ legend:{ position:'bottom', labels:{ color:'#e8ecf5', font:{size:11} } } },
+      responsive: true
+    }
+  });
+}
+async function refreshPortfolio(){
+  // Make sure all portfolio items have prices
+  const need = portfolio.filter(h => !priceCache[h.type + ':' + h.sym] || priceCache[h.type + ':' + h.sym].error);
+  await Promise.all(need.map(async h => {
+    try { priceCache[h.type+':'+h.sym] = await fetchQuote(h); }
+    catch(e) { priceCache[h.type+':'+h.sym] = {error: e.message}; }
+  }));
+  renderPortfolioTable();
+}
+$('port-add').addEventListener('click', () => {
+  const sym = $('port-symbol').value.trim().toUpperCase();
+  const type = $('port-type').value;
+  const qty = parseFloat($('port-shares').value);
+  const cost = parseFloat($('port-cost').value);
+  if (!sym || !qty || qty <= 0 || isNaN(cost) || cost < 0) {
+    alert('Please enter symbol, quantity > 0, and cost per unit ≥ 0');
+    return;
+  }
+  portfolio.push({sym, type, qty, cost});
+  store.save('mw_portfolio', portfolio);
+  $('port-symbol').value = '';
+  $('port-shares').value = '';
+  $('port-cost').value = '';
+  refreshPortfolio();
+});
+
+// =========================================================
+// LEARN — concepts
+// =========================================================
+const CONCEPTS = [
+  {title:'Diversification', body:'Spreading your money across different assets, sectors, and regions so no single failure wipes you out. The classic line: "don\'t put all your eggs in one basket."', takeaway:'Owning 1 stock is much riskier than owning 100 stocks of the same total value.'},
+  {title:'Time Horizon', body:'How long until you need the money. A 30-year-old saving for retirement can ride out volatility; someone needing a down payment in 2 years cannot. Match the asset to the horizon.', takeaway:'Money needed within 1-3 years generally shouldn\'t be in volatile assets.'},
+  {title:'Risk Tolerance', body:'How much loss you can stomach without panic-selling. It\'s both emotional and financial. The "right" portfolio is the one you can hold through a 30%+ drawdown without selling.', takeaway:'A theoretically optimal portfolio you abandon at the bottom is worse than a conservative one you stick with.'},
+  {title:'Expense Ratios', body:'The annual fee a fund charges, expressed as % of assets. A 1% fee compounded over 40 years can eat ~30% of your final value vs a 0.05% fee. Costs matter enormously over time.', takeaway:'Compare expense ratios when choosing between similar index funds.'},
+  {title:'Dollar-Cost Averaging (DCA)', body:'Investing a fixed amount on a regular schedule regardless of price. Removes the temptation to time the market and smooths out your average buy price.', takeaway:'Most 401(k) contributions are already DCA — that\'s a feature, not a bug.'},
+  {title:'Compounding', body:'Earning returns on your previous returns. The 8th wonder of the world, per Einstein (apocryphally). The longer the horizon, the more dramatic the curve.', takeaway:'Starting 10 years earlier often beats contributing twice as much later.'},
+  {title:'Asset Classes', body:'Broad categories: stocks (equities), bonds (fixed income), real estate, cash, commodities, crypto. Each has different risk/return characteristics and tends to behave differently in various economic conditions.', takeaway:'A mix typically reduces overall portfolio volatility.'},
+  {title:'Index Funds vs. Active', body:'Index funds passively track a market (like the S&P 500) at low cost. Active funds try to beat the market but charge more. Decades of data show most active funds underperform their benchmark after fees.', takeaway:'Low-cost broad index funds are the default recommendation in most personal-finance literature.'},
+  {title:'Volatility ≠ Risk', body:'Volatility is how much prices jump around. Real risk is the chance of permanent loss of capital, or of failing to meet your goals. A volatile asset held long enough may be lower-risk than a "safe" asset that loses to inflation.', takeaway:'Cash feels safe but can lose 20%+ of its purchasing power over a decade of inflation.'},
+  {title:'Tax-Advantaged Accounts', body:'Accounts like 401(k), IRA, Roth IRA, HSA in the US offer major tax benefits. Maximizing these before taxable accounts is usually the highest-ROI move in personal finance.', takeaway:'A dollar in a Roth IRA can be worth significantly more than a dollar in a brokerage account over decades.'},
+  {title:'Rebalancing', body:'Periodically resetting your portfolio back to target percentages. Forces you to systematically sell what\'s gone up and buy what\'s gone down — the opposite of what emotion suggests.', takeaway:'Once or twice a year is usually sufficient; more often adds taxes and fees without much benefit.'},
+  {title:'Emergency Fund First', body:'3-6 months of expenses in a high-yield savings account before serious investing. Without it, a job loss can force you to sell investments at the worst possible time.', takeaway:'This isn\'t exciting, but it\'s the foundation everything else rests on.'}
+];
+function renderConcepts(){
+  $('concepts').innerHTML = CONCEPTS.map(c => `
+    <div class="concept">
+      <h3>${escapeHtml(c.title)}</h3>
+      <p>${escapeHtml(c.body)}</p>
+      <div class="takeaway">${escapeHtml(c.takeaway)}</div>
+    </div>`).join('');
+}
+
+// =========================================================
+// GLOSSARY
+// =========================================================
+const GLOSSARY = [
+  ['Bull market', 'A period of rising prices, generally 20%+ off recent lows.'],
+  ['Bear market', 'A 20%+ decline from recent highs in a major index.'],
+  ['Correction', 'A 10–20% decline in a market or asset.'],
+  ['Drawdown', 'Peak-to-trough decline, expressed as %. Useful for understanding worst-case scenarios.'],
+  ['ETF', 'Exchange-Traded Fund. A basket of assets traded like a stock; usually low-fee and tracks an index.'],
+  ['Mutual fund', 'A pooled investment vehicle priced once daily. ETFs have largely replaced these for new investors.'],
+  ['P/E ratio', 'Price-to-Earnings: stock price ÷ earnings per share. Rough valuation gauge; varies by sector.'],
+  ['Dividend', 'A cash payout from a company to shareholders, usually quarterly.'],
+  ['Yield', 'Annual income (dividends or interest) divided by current price, expressed as %.'],
+  ['Bond', 'A loan to a government or corporation that pays interest and returns principal at maturity.'],
+  ['Yield curve', 'Interest rates plotted across bond maturities. Inversion (short > long) historically precedes recessions.'],
+  ['Liquidity', 'How quickly you can convert an asset to cash without significant price impact.'],
+  ['Market cap', 'Share price × shares outstanding. Companies are categorized as small/mid/large cap.'],
+  ['Beta', 'How much an asset moves relative to the broader market. Beta of 1 = moves with market; >1 = more volatile.'],
+  ['Sharpe ratio', 'Return per unit of risk (volatility). Higher = better risk-adjusted return.'],
+  ['Stablecoin', 'Crypto pegged to a fiat currency (usually USD). Different stablecoins have very different risk profiles.'],
+  ['Cost basis', 'What you originally paid for an investment. Used to calculate gains/losses for taxes.'],
+  ['Capital gain', 'Profit from selling an asset for more than cost basis. Short-term (<1yr) usually taxed higher than long-term.']
+];
+function renderGlossary(){
+  $('glossary').innerHTML = GLOSSARY.map(([t,d]) => `<dt>${escapeHtml(t)}</dt><dd>${escapeHtml(d)}</dd>`).join('');
+}
+
+// =========================================================
+// COMPOUND CALCULATOR
+// =========================================================
+function calcCompound(){
+  const P = parseFloat($('calc-initial').value) || 0;
+  const m = parseFloat($('calc-monthly').value) || 0;
+  const r = (parseFloat($('calc-rate').value) || 0) / 100 / 12;
+  const n = (parseFloat($('calc-years').value) || 0) * 12;
+  // FV = P*(1+r)^n + m*((1+r)^n - 1)/r
+  const fv = P * Math.pow(1+r, n) + (r === 0 ? m*n : m * (Math.pow(1+r,n) - 1) / r);
+  const contributed = P + m*n;
+  const earned = fv - contributed;
+  $('calc-out').textContent = fmt$(fv, 0);
+  $('calc-detail').textContent = `Contributed ${fmt$(contributed,0)} · Earned ${fmt$(earned,0)} from compounding`;
+}
+['calc-initial','calc-monthly','calc-rate','calc-years'].forEach(id => $(id).addEventListener('input', calcCompound));
+
+// =========================================================
+// FX RATES
+// =========================================================
+async function loadFx(){
+  const list = $('fx-list');
+  list.innerHTML = '<div class="loading">Loading FX rates…</div>';
+  try {
+    // Free, no-key API
+    const r = await fetch('https://open.er-api.com/v6/latest/USD');
+    const j = await r.json();
+    if (j.result !== 'success') throw new Error('FX feed unavailable');
+    const pairs = ['EUR','GBP','JPY','CAD','AUD','CHF','CNY','INR','MXN','BRL'];
+    list.innerHTML = pairs.map(p => `
+      <div class="fx-row">
+        <span class="fx-pair">USD → ${p}</span>
+        <span class="fx-rate">${fmtNum(j.rates[p], 4)}</span>
+      </div>`).join('');
+    $('fx-updated').textContent = new Date(j.time_last_update_utc).toLocaleTimeString();
+  } catch(e) {
+    list.innerHTML = `<div class="err">Failed to load FX: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+// =========================================================
+// INIT
+// =========================================================
+function init(){
+  // Seed watchlist on first visit
+  if (!localStorage.getItem('mw_watchlist')) {
+    watchlist = [
+      {sym:'AAPL', type:'stock'},
+      {sym:'MSFT', type:'stock'},
+      {sym:'SPY',  type:'stock'},
+      {sym:'BTC',  type:'crypto'},
+      {sym:'ETH',  type:'crypto'}
+    ];
+    store.save('mw_watchlist', watchlist);
+  }
+  renderConcepts();
+  renderGlossary();
+  calcCompound();
+  renderWatchlist();
+  refreshAll();
+  loadBenchmarks();
+  setupAutoRefresh();
+}
+init();
+</script>
+</body>
+</html>

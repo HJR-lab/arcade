@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HJR Arcade</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0a0a0f;
+            color: #e0e0e0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+        }
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .subtitle {
+            color: #888;
+            margin-bottom: 2rem;
+        }
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+            max-width: 900px;
+            width: 100%;
+        }
+        .game-card {
+            background: #1a1a2e;
+            border: 1px solid #2a2a4a;
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-decoration: none;
+            color: inherit;
+            transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+        }
+        .game-card:hover {
+            transform: translateY(-4px);
+            border-color: #667eea;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+        }
+        .game-card h2 {
+            font-size: 1.3rem;
+            margin-bottom: 0.5rem;
+            color: #fff;
+        }
+        .game-card p {
+            color: #999;
+            font-size: 0.9rem;
+        }
+        .game-card .play-btn {
+            display: inline-block;
+            margin-top: 1rem;
+            padding: 0.4rem 1rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 6px;
+            font-size: 0.85rem;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <h1>HJR Arcade</h1>
+    <p class="subtitle">Choose a game to play</p>
+    <div class="games-grid" id="games-grid"></div>
+
+    <script>
+        fetch('games.json')
+            .then(r => r.json())
+            .then(games => {
+                const grid = document.getElementById('games-grid');
+                games.forEach(game => {
+                    const card = document.createElement('a');
+                    card.href = 'games/' + game.id + '/index.html';
+                    card.className = 'game-card';
+
+                    const title = document.createElement('h2');
+                    title.textContent = game.name;
+
+                    const desc = document.createElement('p');
+                    desc.textContent = game.description;
+
+                    const btn = document.createElement('span');
+                    btn.className = 'play-btn';
+                    btn.textContent = 'Play';
+
+                    card.appendChild(title);
+                    card.appendChild(desc);
+                    card.appendChild(btn);
+                    grid.appendChild(card);
+                });
+            });
+    </script>
+</body>
+</html>
