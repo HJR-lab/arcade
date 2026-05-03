@@ -1,4 +1,4 @@
-# HJR Arcade
+# Rivers Arcade
 
 A collection of browser games. Play at: https://hjr-lab.github.io/arcade/
 
