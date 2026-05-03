@@ -2,5 +2,5 @@
   { "id": "flappybird", "name": "Flappy Bird v4", "description": "Navigate the bird through pipes" },
   { "id": "riveeeerrrrrr", "name": "Elemental Clash", "description": "Elemental combat game" },
   { "id": "marketwatch", "name": "Market Watch", "description": "Personal investing dashboard" },
-  { "id": "gravity-golf", "name": "Gravity Golf", "description": "Gravity-based space golf" }
+  { "id": "gravity-well", "name": "Gravity Well", "description": "Gravity-based space game" }
 ]
