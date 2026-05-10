@@ -23,9 +23,10 @@
   #touch { position: fixed; inset: auto 0 0 0; height: 35vh; pointer-events: none; z-index: 6; display: none; }
   .tc { position: absolute; pointer-events: auto; background: rgba(255, 255, 255, 0.08); border: 2px solid rgba(255, 255, 255, 0.22); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: rgba(255, 255, 255, 0.7); font-size: 0.95rem; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); transition: background 0.05s, border-color 0.05s; }
   .tc.active { background: rgba(255, 123, 0, 0.45); border-color: #ff7b00; color: #fff; }
-  .tc-l { left: max(env(safe-area-inset-left, 1rem), 4vw); bottom: 4vh; width: 84px; height: 84px; }
-  .tc-r { left: calc(max(env(safe-area-inset-left, 1rem), 4vw) + 96px); bottom: 4vh; width: 84px; height: 84px; }
-  .tc-jump { right: calc(max(env(safe-area-inset-right, 1rem), 4vw) + 96px); bottom: 4vh; width: 84px; height: 84px; }
+  .tc-l { left: max(env(safe-area-inset-left, 1rem), 4vw); bottom: 4vh; width: 78px; height: 78px; }
+  .tc-r { left: calc(max(env(safe-area-inset-left, 1rem), 4vw) + 88px); bottom: 4vh; width: 78px; height: 78px; }
+  .tc-steal { right: calc(max(env(safe-area-inset-right, 1rem), 4vw) + 184px); bottom: 4vh; width: 76px; height: 76px; background: rgba(120, 230, 255, 0.14); border-color: rgba(120, 230, 255, 0.45); color: #b8e8ff; font-size: 0.78rem; }
+  .tc-jump { right: calc(max(env(safe-area-inset-right, 1rem), 4vw) + 92px); bottom: 4vh; width: 84px; height: 84px; }
   .tc-shoot { right: max(env(safe-area-inset-right, 1rem), 4vw); bottom: 4vh; width: 84px; height: 84px; background: rgba(255, 123, 0, 0.18); border-color: rgba(255, 123, 0, 0.5); color: #ffd6a8; }
 
   .back { position: fixed; top: calc(env(safe-area-inset-top, 0.5rem) + 0.5rem); left: 0.75rem; z-index: 7; display: none; }
@@ -48,7 +49,12 @@
   .footer { color: #555; font-size: 0.75rem; margin-top: 1rem; text-align: center; }
 
   @media (pointer: coarse) { #touch { display: block; } }
-  @media (max-height: 520px) { .tc { width: 64px; height: 64px; font-size: 0.78rem; } .tc-r { left: calc(max(env(safe-area-inset-left, 1rem), 4vw) + 76px); } .tc-jump { right: calc(max(env(safe-area-inset-right, 1rem), 4vw) + 76px); } }
+  @media (max-height: 520px), (max-width: 720px) {
+    .tc { width: 60px; height: 60px; font-size: 0.7rem; }
+    .tc-r { left: calc(max(env(safe-area-inset-left, 1rem), 4vw) + 70px); }
+    .tc-steal { right: calc(max(env(safe-area-inset-right, 1rem), 4vw) + 148px); width: 58px; height: 58px; }
+    .tc-jump { right: calc(max(env(safe-area-inset-right, 1rem), 4vw) + 76px); }
+  }
 </style>
 </head>
 <body>
@@ -63,6 +69,7 @@
 <div id="touch">
   <div class="tc tc-l" data-key="left" aria-label="Left">◀</div>
   <div class="tc tc-r" data-key="right" aria-label="Right">▶</div>
+  <div class="tc tc-steal" data-key="steal" aria-label="Steal">STEAL</div>
   <div class="tc tc-jump" data-key="jump" aria-label="Jump">JUMP</div>
   <div class="tc tc-shoot" data-key="shoot" aria-label="Shoot">SHOOT</div>
 </div>
@@ -76,12 +83,17 @@
   <div class="menu-card" data-mode="cpu">
     <h3>vs CPU</h3>
     <p>Single player against the AI.</p>
-    <div class="ctrl-hint">Touch: on-screen pad · Keys: A/D move · W jump · Space shoot</div>
+    <div class="ctrl-hint">Touch: on-screen pad · Keys: A/D · W jump · Space shoot · E steal</div>
+  </div>
+  <div class="menu-card" data-mode="tournament">
+    <h3>Tournament</h3>
+    <p>4-round single-elimination bracket against escalating CPU opponents. Win all 4 to be champion.</p>
+    <div class="ctrl-hint">First-to-7 per match</div>
   </div>
   <div class="menu-card" data-mode="local">
     <h3>Local 2 Player</h3>
     <p>Two players, same screen.</p>
-    <div class="ctrl-hint">Red: A/D/W/F · Blue: ←/→/↑/L</div>
+    <div class="ctrl-hint">Red: A/D/W/F/E · Blue: ←/→/↑/L/;</div>
   </div>
   <div class="menu-card" data-mode="host">
     <h3>Play with a Friend — Host</h3>
@@ -114,20 +126,22 @@
 const CFG = {
   W: 1200, H: 600,
   GROUND: 540,
-  GRAVITY: 0.55,
+  GRAVITY: 0.6,
   P_W: 44, P_H: 84,
-  P_SPEED: 5.2, P_JUMP_V: -13, P_DJUMP_V: -10.5,
+  P_SPEED: 5.4, P_JUMP_V: -16, P_DJUMP_V: -11,
   BALL_R: 14,
   BALL_BOUNCE: 0.62,
   BALL_AIR: 0.998,
   HOOP_LX: 110, HOOP_RX: 1090,
-  RIM_Y: 240, RIM_W: 56,
-  BACKBOARD_Y: 130, BACKBOARD_H: 110,
+  RIM_Y: 290, RIM_W: 56,
+  BACKBOARD_Y: 180, BACKBOARD_H: 110,
   WIN_SCORE: 11,
-  SHOOT_MAX_CHARGE: 55,
-  SHOOT_MIN_CHARGE: 8,
+  SHOOT_MAX_CHARGE: 30,
+  SHOOT_MIN_CHARGE: 3,
   THREE_LINE_L: 360,
   THREE_LINE_R: 840,
+  STEAL_RANGE: 78,
+  STEAL_COOLDOWN: 90,
   PEER_PREFIX: "rivers-bbstars-",
   NET_HZ: 30,
   TICK_HZ: 60,
@@ -144,9 +158,11 @@ function makePlayer(id) {
     onGround: true, jumps: 0,
     shootCharge: 0, charging: false,
     stunCooldown: 0,
+    stealCooldown: 0,
+    dunkFlash: 0,
   };
 }
-function newState() {
+function newState(winTarget) {
   return {
     players: [makePlayer(0), makePlayer(1)],
     ball: { x: 600, y: 380, vx: 0, vy: 0, holder: 0, lastShooter: -1, scoredFromX: null, touchedRim: false, prevY: 380 },
@@ -154,19 +170,30 @@ function newState() {
     inputs: [emptyInput(), emptyInput()],
     prevJump: [false, false],
     prevShoot: [false, false],
+    prevSteal: [false, false],
     freeze: 60,
     winner: null,
+    winTarget: winTarget || CFG.WIN_SCORE,
     tick: 0,
   };
 }
-function emptyInput() { return { left: false, right: false, jump: false, shoot: false }; }
+function emptyInput() { return { left: false, right: false, jump: false, shoot: false, steal: false }; }
 
 let state = newState();
-let mode = "menu"; // 'menu' | 'cpu' | 'local' | 'host' | 'join'
+let mode = "menu"; // 'menu' | 'cpu' | 'tournament' | 'local' | 'host' | 'join'
 let role = "host"; // when networked: 'host' or 'peer'
 let netPeer = null, netConn = null;
 let netLastSendT = 0;
 let lerpState = null; // peer interpolated state
+
+// Tournament bracket — generic team names, escalating difficulty
+const TOURNEY_OPPS = [
+  { name: "Falcons",  diff: 0.85 },
+  { name: "Cobras",   diff: 1.00 },
+  { name: "Tigers",   diff: 1.18 },
+  { name: "Legends",  diff: 1.35 },
+];
+let tournament = null; // { round: 0 } when active
 
 // ============================================================
 // DOM
@@ -202,6 +229,10 @@ function step(s) {
     }
     s.prevJump[p.id] = inp.jump;
 
+    // steal edge detection
+    if (inp.steal && !s.prevSteal[p.id]) attemptSteal(s, p);
+    s.prevSteal[p.id] = inp.steal;
+
     // shoot charge / release
     if (s.ball.holder === p.id) {
       if (inp.shoot) { p.charging = true; p.shootCharge = Math.min(p.shootCharge + 1, CFG.SHOOT_MAX_CHARGE); }
@@ -218,6 +249,8 @@ function step(s) {
     if (p.x + CFG.P_W > CFG.W - 30) p.x = CFG.W - 30 - CFG.P_W;
 
     if (p.stunCooldown > 0) p.stunCooldown--;
+    if (p.stealCooldown > 0) p.stealCooldown--;
+    if (p.dunkFlash > 0) p.dunkFlash--;
   }
 
   // Block / steal: defender jumping into holder knocks ball loose
@@ -291,8 +324,28 @@ function step(s) {
     }
   }
 
-  if (s.score[0] >= CFG.WIN_SCORE) s.winner = 0;
-  if (s.score[1] >= CFG.WIN_SCORE) s.winner = 1;
+  if (s.score[0] >= s.winTarget) s.winner = 0;
+  if (s.score[1] >= s.winTarget) s.winner = 1;
+}
+
+function attemptSteal(s, p) {
+  if (p.stealCooldown > 0) return;
+  p.stealCooldown = CFG.STEAL_COOLDOWN;
+  const opp = s.players[1 - p.id];
+  // Only steals if opponent currently has the ball
+  if (s.ball.holder !== opp.id) return;
+  const dx = (p.x + CFG.P_W / 2) - (opp.x + CFG.P_W / 2);
+  const dy = (p.y + CFG.P_H / 2) - (opp.y + CFG.P_H / 2);
+  const d = Math.hypot(dx, dy);
+  if (d > CFG.STEAL_RANGE) return;
+  // Successful steal: ball goes loose toward defender
+  s.ball.holder = null;
+  s.ball.vx = (dx > 0 ? 4 : -4);
+  s.ball.vy = -3;
+  s.ball.touchedRim = true;
+  s.ball.lastShooter = -1;
+  opp.stunCooldown = 28;
+  flashSteal = { x: opp.x + CFG.P_W / 2, y: opp.y, t: 35 };
 }
 
 function rectsOverlap(ax, ay, aw, ah, bx, by, bw, bh) {
@@ -332,7 +385,7 @@ function checkScore(s, hoopX, scorerId) {
     }
     s.score[scorerId] += pts;
     flashScore = { side: scorerId, pts, t: 70 };
-    if (s.score[scorerId] < CFG.WIN_SCORE) resetAfterScore(s, scorerId);
+    if (s.score[scorerId] < s.winTarget) resetAfterScore(s, scorerId);
     else { s.winner = scorerId; }
   }
 }
@@ -346,26 +399,41 @@ function resetAfterScore(s, scorerId) {
 function shoot(s, p) {
   const b = s.ball;
   if (b.holder !== p.id) return;
-  const charge = p.shootCharge / CFG.SHOOT_MAX_CHARGE;
   const targetX = p.id === 0 ? CFG.HOOP_RX : CFG.HOOP_LX;
-  const targetY = CFG.RIM_Y - 10;
+  const targetY = CFG.RIM_Y - 8;
+
+  // DUNK: ball is above the rim AND player is right next to the hoop -> slam straight down
+  if (b.y < CFG.RIM_Y - 4 && Math.abs(b.x - targetX) < 38) {
+    b.x = targetX;
+    b.vx = 0;
+    b.vy = 14;
+    b.holder = null;
+    b.lastShooter = p.id;
+    b.scoredFromX = p.x + CFG.P_W / 2;
+    b.touchedRim = false;
+    p.stunCooldown = 6;
+    p.dunkFlash = 24;
+    return;
+  }
+
+  const charge = p.shootCharge / CFG.SHOOT_MAX_CHARGE;
   const sx = b.x, sy = b.y;
   const dx = targetX - sx;
   const dist = Math.abs(dx);
-  // flight time scales with distance — sweet spot at ~70% charge
+  // ideal charge depends on distance — sweet spot scales 0.45 -> 0.9
   const ideal = Math.min(0.9, 0.45 + dist / 1600);
   const accuracy = 1 - Math.min(1, Math.abs(charge - ideal) * 2.4);
-  const t = 56 + dist * 0.04;
+  // tighter flight time so the arc stays on-screen
+  const t = 32 + dist * 0.022;
   const g = CFG.GRAVITY * 0.92;
   const vx = dx / t;
   const vy = (targetY - sy - 0.5 * g * t * t) / t;
-  // off-target error grows when accuracy is low; small randomness for AI feel
-  const errX = (1 - accuracy) * (Math.random() < 0.5 ? -1 : 1) * (28 + dist * 0.012);
-  const errY = (1 - accuracy) * (Math.random() < 0.5 ? -1 : 1) * 6;
-  b.vx = vx + errX * 0.06;
-  b.vy = vy + errY * 0.06;
-  // also nudge by error in flight by mis-aiming target
-  b.vx += (1 - accuracy) * (Math.random() - 0.5) * 4;
+  // off-target error grows as accuracy drops
+  const sign = Math.random() < 0.5 ? -1 : 1;
+  const errX = (1 - accuracy) * sign * (18 + dist * 0.008);
+  const errY = (1 - accuracy) * (Math.random() - 0.5) * 4;
+  b.vx = vx + errX * 0.05;
+  b.vy = vy + errY * 0.05;
   b.holder = null;
   b.lastShooter = p.id;
   b.scoredFromX = p.x + CFG.P_W / 2;
@@ -376,38 +444,52 @@ function shoot(s, p) {
 // ============================================================
 // CPU AI (drives state.inputs[1] when in vs-CPU mode)
 // ============================================================
-let aiState = { shootHoldTimer: 0, jumpCooldown: 0, spotX: 640 };
-function resetAi() { aiState = { shootHoldTimer: 0, jumpCooldown: 0, spotX: 600 + Math.random() * 120 }; }
+let aiState = { shootHoldTimer: 0, jumpCooldown: 0, spotX: 640, diff: 1, stealFired: false };
+function resetAi(diff) {
+  aiState = { shootHoldTimer: 0, jumpCooldown: 0, spotX: 600 + Math.random() * 120, diff: diff || 1, stealFired: false };
+}
 function aiThink(s) {
   const me = s.players[1], opp = s.players[0], b = s.ball;
   const inp = s.inputs[1];
-  inp.left = inp.right = inp.jump = inp.shoot = false;
+  inp.left = inp.right = inp.jump = inp.shoot = inp.steal = false;
   if (s.freeze > 0 || s.winner !== null) { aiState.shootHoldTimer = 0; return; }
   aiState.jumpCooldown = Math.max(0, aiState.jumpCooldown - 1);
+  const diff = aiState.diff;
 
   if (b.holder === 1) {
-    // Move to a chosen spot in shooting range, then charge & release
-    if (me.x > aiState.spotX + 12) inp.left = true;
-    else if (me.x < aiState.spotX - 12) inp.right = true;
-    const dist = Math.abs(me.x - CFG.HOOP_LX);
-    if (dist > 220 && dist < 760 && me.onGround) {
-      aiState.shootHoldTimer++;
-      // Match physics' ideal charge: ideal = 0.45 + dist/1600, of SHOOT_MAX_CHARGE
-      const idealCharge = Math.min(0.9, 0.45 + dist / 1600) * CFG.SHOOT_MAX_CHARGE;
-      const target = Math.round(idealCharge + (Math.random() * 6 - 3));
-      if (aiState.shootHoldTimer < target) inp.shoot = true;
-      else { inp.shoot = false; aiState.shootHoldTimer = 0; aiState.spotX = 600 + Math.random() * 140; }
+    // Move toward a shooting spot. If already above the rim, just go for the dunk.
+    const nearRim = Math.abs(me.x - CFG.HOOP_LX) < 110 && me.y < CFG.RIM_Y + 20;
+    if (nearRim && !me.onGround) {
+      inp.shoot = true;
+    } else {
+      if (me.x > aiState.spotX + 12) inp.left = true;
+      else if (me.x < aiState.spotX - 12) inp.right = true;
+      const dist = Math.abs(me.x - CFG.HOOP_LX);
+      if (dist > 220 && dist < 760 && me.onGround) {
+        aiState.shootHoldTimer++;
+        const idealCharge = Math.min(0.9, 0.45 + dist / 1600) * CFG.SHOOT_MAX_CHARGE;
+        const variance = Math.max(1, 4 / diff);
+        const target = Math.round(idealCharge + (Math.random() * 2 - 1) * variance);
+        if (aiState.shootHoldTimer < target) inp.shoot = true;
+        else { inp.shoot = false; aiState.shootHoldTimer = 0; aiState.spotX = 600 + Math.random() * 140; }
+      }
     }
   } else {
     aiState.shootHoldTimer = 0;
     if (b.holder === 0) {
-      // Defend: chase opponent, jump to block when close
+      // Defend: chase, jump occasionally, steal when close
       if (opp.x > me.x + 4) inp.right = true; else if (opp.x < me.x - 4) inp.left = true;
-      if (Math.abs(opp.x - me.x) < 90 && aiState.jumpCooldown === 0 && me.onGround && Math.random() < 0.07) {
+      const apart = Math.abs(opp.x - me.x);
+      if (apart < 90 && aiState.jumpCooldown === 0 && me.onGround && Math.random() < 0.05 * diff) {
         inp.jump = true; aiState.jumpCooldown = 40;
       }
+      // Steal: edge-press once when in range
+      if (apart < CFG.STEAL_RANGE - 10 && me.stealCooldown === 0 && !aiState.stealFired && Math.random() < 0.4 * diff) {
+        inp.steal = true; aiState.stealFired = true;
+      }
+      if (apart > CFG.STEAL_RANGE + 30) aiState.stealFired = false;
     } else {
-      // Loose ball — chase
+      aiState.stealFired = false;
       if (b.x > me.x + 5) inp.right = true;
       else if (b.x < me.x - 5) inp.left = true;
       if (b.y < me.y + 20 && Math.abs(b.x - (me.x + CFG.P_W / 2)) < 60 && me.onGround && aiState.jumpCooldown === 0) {
@@ -421,6 +503,7 @@ function aiThink(s) {
 // RENDERING
 // ============================================================
 let flashScore = null;
+let flashSteal = null;
 function render(s) {
   const ctxv = ctx;
   // background
@@ -476,12 +559,32 @@ function render(s) {
   // Score flash
   if (flashScore) {
     flashScore.t--;
-    const alpha = Math.min(1, flashScore.t / 30);
+    const alpha = Math.max(0, Math.min(1, flashScore.t / 30));
     ctxv.fillStyle = `rgba(255, 215, 80, ${alpha})`;
     ctxv.font = "bold 96px -apple-system, sans-serif";
     ctxv.textAlign = "center";
     ctxv.fillText(`+${flashScore.pts}`, flashScore.side === 0 ? 420 : 780, 220);
     if (flashScore.t <= 0) flashScore = null;
+  }
+  // Steal flash
+  if (flashSteal) {
+    flashSteal.t--;
+    const alpha = Math.max(0, Math.min(1, flashSteal.t / 35));
+    ctxv.fillStyle = `rgba(120, 230, 255, ${alpha})`;
+    ctxv.font = "bold 36px -apple-system, sans-serif";
+    ctxv.textAlign = "center";
+    ctxv.fillText("STEAL!", flashSteal.x, flashSteal.y);
+    if (flashSteal.t <= 0) flashSteal = null;
+  }
+  // Dunk flash on player
+  for (const p of s.players) {
+    if (p.dunkFlash > 0) {
+      const alpha = Math.max(0, Math.min(1, p.dunkFlash / 24));
+      ctxv.fillStyle = `rgba(255, 200, 60, ${alpha})`;
+      ctxv.font = "bold 32px -apple-system, sans-serif";
+      ctxv.textAlign = "center";
+      ctxv.fillText("DUNK!", p.x + CFG.P_W / 2, p.y - 8);
+    }
   }
 
   // Freeze countdown
@@ -578,8 +681,8 @@ function roundRect(x, y, w, h, r) {
 // ============================================================
 const keysDown = {};
 const localInputs = [emptyInput(), emptyInput()];
-const keyMap0 = { KeyA: "left", KeyD: "right", KeyW: "jump", KeyF: "shoot", Space: "shoot" };
-const keyMap1 = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "jump", KeyL: "shoot" };
+const keyMap0 = { KeyA: "left", KeyD: "right", KeyW: "jump", KeyF: "shoot", Space: "shoot", KeyE: "steal", KeyS: "steal" };
+const keyMap1 = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "jump", KeyL: "shoot", Semicolon: "steal", ArrowDown: "steal" };
 
 window.addEventListener("keydown", (e) => {
   if (mode === "menu") return;
@@ -619,9 +722,9 @@ let acc = 0;
 function loop(t) {
   const dt = t - lastT; lastT = t;
 
-  if (mode === "cpu" || mode === "local") {
+  if (mode === "cpu" || mode === "tournament" || mode === "local") {
     state.inputs[0] = { ...localInputs[0] };
-    if (mode === "cpu") aiThink(state);
+    if (mode === "cpu" || mode === "tournament") aiThink(state);
     else state.inputs[1] = { ...localInputs[1] };
     acc += dt;
     while (acc > 1000 / CFG.TICK_HZ) { step(state); acc -= 1000 / CFG.TICK_HZ; }
@@ -664,6 +767,10 @@ function updateHud(s) {
 
 function checkGameOver(s) {
   if (s.winner !== null && statusEl.style.display !== "block") {
+    if (mode === "tournament" && tournament) {
+      handleTournamentEnd(s.winner);
+      return;
+    }
     const winnerName = s.winner === 0 ? "Red" : "Blue";
     showStatus(`${winnerName} wins! ${s.score[0]} – ${s.score[1]}<br><button class="btn" id="rematch">Rematch</button> <button class="btn secondary" id="toMenu">Menu</button>`);
     setTimeout(() => {
@@ -671,6 +778,7 @@ function checkGameOver(s) {
       if (r) r.onclick = () => {
         state = newState();
         flashScore = null;
+        flashSteal = null;
         if (mode === "cpu") resetAi();
         hideStatus();
       };
@@ -797,6 +905,8 @@ function goMenu() {
   state = newState();
   lerpState = null;
   flashScore = null;
+  flashSteal = null;
+  tournament = null;
   resetAi();
   menu.style.display = "flex";
   hud.style.display = "none";
@@ -810,6 +920,58 @@ function goMenu() {
   document.querySelectorAll(".tc.active").forEach((el) => el.classList.remove("active"));
 }
 
+function startTournament() {
+  tournament = { round: 0 };
+  startTournamentMatch();
+}
+function startTournamentMatch() {
+  const opp = TOURNEY_OPPS[tournament.round];
+  state = newState(7);
+  resetAi(opp.diff);
+  flashScore = null;
+  flashSteal = null;
+  mode = "tournament";
+  menu.style.display = "none";
+  hud.style.display = "flex";
+  backBtn.style.display = "block";
+  modeLbl.textContent = `Tournament · R${tournament.round + 1}/${TOURNEY_OPPS.length} · ${opp.name}`;
+  hideStatus();
+}
+function bracketHtml(highlightIdx, results) {
+  return TOURNEY_OPPS.map((o, i) => {
+    let mark = "·";
+    if (results && results[i] === "W") mark = "✓";
+    if (results && results[i] === "L") mark = "✗";
+    const cur = i === highlightIdx ? "color:#ff7b00;font-weight:700" : "";
+    return `<div style="${cur}"><span style="display:inline-block;width:1.2em">${mark}</span> Round ${i + 1} — ${o.name}</div>`;
+  }).join("");
+}
+function handleTournamentEnd(winnerId) {
+  const round = tournament.round;
+  const results = TOURNEY_OPPS.map((_, i) => i < round ? "W" : (i === round ? (winnerId === 0 ? "W" : "L") : ""));
+  if (winnerId === 0) {
+    tournament.round++;
+    if (tournament.round >= TOURNEY_OPPS.length) {
+      showStatus(`<div style="color:#ffe080;font-size:1.4rem;font-weight:700;margin-bottom:.5rem">TOURNAMENT CHAMPION</div><div style="font-size:.85rem;margin-bottom:.7rem">${bracketHtml(-1, results)}</div><button class="btn" id="toMenu">Menu</button>`);
+      tournament = null;
+      setTimeout(() => { const m = document.getElementById("toMenu"); if (m) m.onclick = goMenu; }, 50);
+    } else {
+      const next = TOURNEY_OPPS[tournament.round];
+      showStatus(`<div style="font-weight:700;margin-bottom:.4rem">Round ${round + 1} won!</div><div style="font-size:.85rem;margin-bottom:.7rem">${bracketHtml(tournament.round, results)}</div><div style="margin-bottom:.5rem">Next: <strong>${next.name}</strong></div><button class="btn" id="next">Continue</button> <button class="btn secondary" id="quit">Quit</button>`);
+      setTimeout(() => {
+        const n = document.getElementById("next"); if (n) n.onclick = startTournamentMatch;
+        const q = document.getElementById("quit"); if (q) q.onclick = goMenu;
+      }, 50);
+    }
+  } else {
+    showStatus(`<div style="font-weight:700;margin-bottom:.4rem">Eliminated in Round ${round + 1}.</div><div style="font-size:.85rem;margin-bottom:.7rem">${bracketHtml(round, results)}</div><button class="btn" id="retry">Retry round</button> <button class="btn secondary" id="quit">Menu</button>`);
+    setTimeout(() => {
+      const r = document.getElementById("retry"); if (r) r.onclick = startTournamentMatch;
+      const q = document.getElementById("quit"); if (q) q.onclick = goMenu;
+    }, 50);
+  }
+}
+
 document.querySelectorAll(".menu-card").forEach((card) => {
   card.addEventListener("click", () => {
     const m = card.dataset.mode;
@@ -817,12 +979,15 @@ document.querySelectorAll(".menu-card").forEach((card) => {
       mode = m;
       state = newState();
       flashScore = null;
+      flashSteal = null;
       if (m === "cpu") resetAi();
       menu.style.display = "none";
       hud.style.display = "flex";
       backBtn.style.display = "block";
       modeLbl.textContent = m === "cpu" ? "vs CPU" : "Local 2 Player";
       hideStatus();
+    } else if (m === "tournament") {
+      startTournament();
     } else if (m === "host") {
       startHost();
     } else if (m === "join") {
