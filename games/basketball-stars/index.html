@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Basketball Stars — Rivers Arcade</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a0f; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #e0e0e0; touch-action: none; }
+  #app { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+  #game { display: block; max-width: 100%; max-height: 100%; width: 100%; height: 100%; object-fit: contain; image-rendering: -webkit-optimize-contrast; }
+
+  #hud { position: fixed; top: 0; left: 0; right: 0; display: none; justify-content: space-between; align-items: center; padding: env(safe-area-inset-top, 0.5rem) 1rem 0.5rem; pointer-events: none; font-weight: 700; font-size: clamp(1rem, 2.6vw, 1.4rem); z-index: 5; }
+  #hud .score-side { background: rgba(0, 0, 0, 0.5); padding: 0.45rem 0.95rem; border-radius: 10px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+  #hud .red { color: #ff7b7b; }
+  #hud .blue { color: #7ba5ff; }
+  #hud .center { color: #ffe; font-size: 0.75em; opacity: 0.85; text-align: center; }
+
+  #status { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.8); padding: 1rem 1.5rem; border-radius: 12px; z-index: 8; text-align: center; font-size: 1.1rem; max-width: 80vw; display: none; }
+  #status .btn { margin-top: 0.75rem; }
+
+  #touch { position: fixed; inset: auto 0 0 0; height: 35vh; pointer-events: none; z-index: 6; display: none; }
+  .tc { position: absolute; pointer-events: auto; background: rgba(255, 255, 255, 0.08); border: 2px solid rgba(255, 255, 255, 0.22); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: rgba(255, 255, 255, 0.7); font-size: 0.95rem; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); transition: background 0.05s, border-color 0.05s; }
+  .tc.active { background: rgba(255, 123, 0, 0.45); border-color: #ff7b00; color: #fff; }
+  .tc-l { left: max(env(safe-area-inset-left, 1rem), 4vw); bottom: 4vh; width: 84px; height: 84px; }
+  .tc-r { left: calc(max(env(safe-area-inset-left, 1rem), 4vw) + 96px); bottom: 4vh; width: 84px; height: 84px; }
+  .tc-jump { right: calc(max(env(safe-area-inset-right, 1rem), 4vw) + 96px); bottom: 4vh; width: 84px; height: 84px; }
+  .tc-shoot { right: max(env(safe-area-inset-right, 1rem), 4vw); bottom: 4vh; width: 84px; height: 84px; background: rgba(255, 123, 0, 0.18); border-color: rgba(255, 123, 0, 0.5); color: #ffd6a8; }
+
+  .back { position: fixed; top: calc(env(safe-area-inset-top, 0.5rem) + 0.5rem); left: 0.75rem; z-index: 7; display: none; }
+
+  #menu { position: fixed; inset: 0; background: radial-gradient(1200px 800px at 30% 20%, #1a2640 0%, #0a0a0f 70%); display: flex; flex-direction: column; align-items: center; justify-content: flex-start; z-index: 10; padding: 2rem 1rem; overflow-y: auto; }
+  #menu h1 { font-size: clamp(2rem, 6vw, 3.4rem); background: linear-gradient(135deg, #ff7b00, #ffb74d); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 0.25rem; letter-spacing: -0.02em; }
+  #menu .subtitle { color: #8a8aa3; margin-bottom: 1.5rem; font-size: 0.95rem; text-align: center; }
+  .menu-card { background: #14142a; border: 1px solid #2a2a4a; border-radius: 14px; padding: 1.1rem 1.3rem; width: min(440px, 94vw); margin-bottom: 0.7rem; cursor: pointer; transition: all 0.15s; }
+  .menu-card:hover, .menu-card.active { border-color: #ff7b00; box-shadow: 0 8px 28px rgba(255, 123, 0, 0.18); transform: translateY(-2px); }
+  .menu-card h3 { margin-bottom: 0.2rem; color: #fff; font-size: 1.05rem; }
+  .menu-card p { color: #9a9ab0; font-size: 0.85rem; line-height: 1.4; }
+  .menu-card .ctrl-hint { color: #6a6a85; font-size: 0.78rem; margin-top: 0.4rem; font-family: ui-monospace, monospace; }
+  .room-row { display: flex; gap: 0.5rem; align-items: center; margin-top: 0.7rem; }
+  .room-row input { flex: 1; background: #0a0a0f; border: 1px solid #333; border-radius: 8px; padding: 0.55rem 0.7rem; color: #fff; font-family: ui-monospace, monospace; font-size: 1.05rem; letter-spacing: 0.08em; text-transform: uppercase; min-width: 0; }
+  .room-row input:focus { outline: none; border-color: #ff7b00; }
+  .btn { background: linear-gradient(135deg, #ff7b00, #ff5b00); border: none; border-radius: 8px; padding: 0.55rem 1rem; color: #fff; font-weight: 600; cursor: pointer; font-size: 0.9rem; font-family: inherit; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn.secondary { background: #2a2a4a; }
+  .info-line { font-size: 0.82rem; color: #ff7b00; margin-top: 0.55rem; min-height: 1em; }
+  .footer { color: #555; font-size: 0.75rem; margin-top: 1rem; text-align: center; }
+
+  @media (pointer: coarse) { #touch { display: block; } }
+  @media (max-height: 520px) { .tc { width: 64px; height: 64px; font-size: 0.78rem; } .tc-r { left: calc(max(env(safe-area-inset-left, 1rem), 4vw) + 76px); } .tc-jump { right: calc(max(env(safe-area-inset-right, 1rem), 4vw) + 76px); } }
+</style>
+</head>
+<body>
+<div id="app"><canvas id="game" width="1200" height="600"></canvas></div>
+
+<div id="hud">
+  <div class="score-side red"><span id="s0">0</span> Red</div>
+  <div class="center" id="modeLbl">vs CPU</div>
+  <div class="score-side blue">Blue <span id="s1">0</span></div>
+</div>
+
+<div id="touch">
+  <div class="tc tc-l" data-key="left" aria-label="Left">◀</div>
+  <div class="tc tc-r" data-key="right" aria-label="Right">▶</div>
+  <div class="tc tc-jump" data-key="jump" aria-label="Jump">JUMP</div>
+  <div class="tc tc-shoot" data-key="shoot" aria-label="Shoot">SHOOT</div>
+</div>
+
+<button class="btn secondary back" id="back">← Menu</button>
+<div id="status"></div>
+
+<div id="menu">
+  <h1>Basketball Stars</h1>
+  <p class="subtitle">Original 1v1 half-court action — first to 11 wins</p>
+  <div class="menu-card" data-mode="cpu">
+    <h3>vs CPU</h3>
+    <p>Single player against the AI.</p>
+    <div class="ctrl-hint">Touch: on-screen pad · Keys: A/D move · W jump · Space shoot</div>
+  </div>
+  <div class="menu-card" data-mode="local">
+    <h3>Local 2 Player</h3>
+    <p>Two players, same screen.</p>
+    <div class="ctrl-hint">Red: A/D/W/F · Blue: ←/→/↑/L</div>
+  </div>
+  <div class="menu-card" data-mode="host">
+    <h3>Play with a Friend — Host</h3>
+    <p>Create a room and share the code with your friend's iPad.</p>
+    <div class="room-row" id="hostRow" style="display:none">
+      <input id="hostCode" readonly>
+      <button class="btn" id="hostCopy">Copy</button>
+    </div>
+    <p class="info-line" id="hostStatus"></p>
+  </div>
+  <div class="menu-card" data-mode="join">
+    <h3>Play with a Friend — Join</h3>
+    <p>Enter the room code your friend shared.</p>
+    <div class="room-row" onclick="event.stopPropagation()">
+      <input id="joinCode" placeholder="ROOM CODE" maxlength="10" autocapitalize="characters" autocomplete="off">
+      <button class="btn" id="joinBtn">Join</button>
+    </div>
+    <p class="info-line" id="joinStatus"></p>
+  </div>
+  <p class="footer">Built for Rivers Arcade · Multiplayer powered by PeerJS WebRTC</p>
+</div>
+
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+"use strict";
+
+// ============================================================
+// CONFIG
+// ============================================================
+const CFG = {
+  W: 1200, H: 600,
+  GROUND: 540,
+  GRAVITY: 0.55,
+  P_W: 44, P_H: 84,
+  P_SPEED: 5.2, P_JUMP_V: -13, P_DJUMP_V: -10.5,
+  BALL_R: 14,
+  BALL_BOUNCE: 0.62,
+  BALL_AIR: 0.998,
+  HOOP_LX: 110, HOOP_RX: 1090,
+  RIM_Y: 240, RIM_W: 56,
+  BACKBOARD_Y: 130, BACKBOARD_H: 110,
+  WIN_SCORE: 11,
+  SHOOT_MAX_CHARGE: 55,
+  SHOOT_MIN_CHARGE: 8,
+  THREE_LINE_L: 360,
+  THREE_LINE_R: 840,
+  PEER_PREFIX: "rivers-bbstars-",
+  NET_HZ: 30,
+  TICK_HZ: 60,
+};
+
+// ============================================================
+// STATE
+// ============================================================
+function makePlayer(id) {
+  const x = id === 0 ? 380 : 820;
+  return {
+    id, x, y: CFG.GROUND - CFG.P_H, vx: 0, vy: 0,
+    facing: id === 0 ? 1 : -1,
+    onGround: true, jumps: 0,
+    shootCharge: 0, charging: false,
+    stunCooldown: 0,
+  };
+}
+function newState() {
+  return {
+    players: [makePlayer(0), makePlayer(1)],
+    ball: { x: 600, y: 380, vx: 0, vy: 0, holder: 0, lastShooter: -1, scoredFromX: null, touchedRim: false, prevY: 380 },
+    score: [0, 0],
+    inputs: [emptyInput(), emptyInput()],
+    prevJump: [false, false],
+    prevShoot: [false, false],
+    freeze: 60,
+    winner: null,
+    tick: 0,
+  };
+}
+function emptyInput() { return { left: false, right: false, jump: false, shoot: false }; }
+
+let state = newState();
+let mode = "menu"; // 'menu' | 'cpu' | 'local' | 'host' | 'join'
+let role = "host"; // when networked: 'host' or 'peer'
+let netPeer = null, netConn = null;
+let netLastSendT = 0;
+let lerpState = null; // peer interpolated state
+
+// ============================================================
+// DOM
+// ============================================================
+const cv = document.getElementById("game");
+const ctx = cv.getContext("2d");
+const menu = document.getElementById("menu");
+const hud = document.getElementById("hud");
+const s0el = document.getElementById("s0"), s1el = document.getElementById("s1");
+const modeLbl = document.getElementById("modeLbl");
+const backBtn = document.getElementById("back");
+const statusEl = document.getElementById("status");
+const touch = document.getElementById("touch");
+
+// ============================================================
+// PHYSICS / SIMULATION (host-authoritative)
+// ============================================================
+function step(s) {
+  s.tick++;
+  if (s.freeze > 0) { s.freeze--; return; }
+  if (s.winner !== null) return;
+
+  for (const p of s.players) {
+    const inp = s.inputs[p.id];
+    p.vx = (inp.left ? -CFG.P_SPEED : 0) + (inp.right ? CFG.P_SPEED : 0);
+    if (inp.left && !inp.right) p.facing = -1;
+    if (inp.right && !inp.left) p.facing = 1;
+
+    // jump edge detection
+    if (inp.jump && !s.prevJump[p.id]) {
+      if (p.onGround) { p.vy = CFG.P_JUMP_V; p.jumps = 1; p.onGround = false; }
+      else if (p.jumps < 2) { p.vy = CFG.P_DJUMP_V; p.jumps = 2; }
+    }
+    s.prevJump[p.id] = inp.jump;
+
+    // shoot charge / release
+    if (s.ball.holder === p.id) {
+      if (inp.shoot) { p.charging = true; p.shootCharge = Math.min(p.shootCharge + 1, CFG.SHOOT_MAX_CHARGE); }
+      else if (p.charging && p.shootCharge >= CFG.SHOOT_MIN_CHARGE) { shoot(s, p); p.charging = false; p.shootCharge = 0; }
+      else if (!inp.shoot) { p.charging = false; p.shootCharge = 0; }
+    } else { p.charging = false; p.shootCharge = 0; }
+    s.prevShoot[p.id] = inp.shoot;
+
+    // gravity & integrate
+    p.vy += CFG.GRAVITY;
+    p.x += p.vx; p.y += p.vy;
+    if (p.y + CFG.P_H >= CFG.GROUND) { p.y = CFG.GROUND - CFG.P_H; p.vy = 0; p.onGround = true; p.jumps = 0; }
+    if (p.x < 30) p.x = 30;
+    if (p.x + CFG.P_W > CFG.W - 30) p.x = CFG.W - 30 - CFG.P_W;
+
+    if (p.stunCooldown > 0) p.stunCooldown--;
+  }
+
+  // Block / steal: defender jumping into holder knocks ball loose
+  const a = s.players[0], b = s.players[1];
+  if (s.ball.holder !== null) {
+    const h = s.players[s.ball.holder];
+    const d = s.players[1 - s.ball.holder];
+    if (d.stunCooldown === 0 && rectsOverlap(d.x, d.y, CFG.P_W, CFG.P_H, h.x, h.y, CFG.P_W, CFG.P_H) && !d.onGround) {
+      // knock ball loose
+      const ball = s.ball;
+      ball.holder = null;
+      ball.vx = (h.x - d.x) > 0 ? 6 : -6;
+      ball.vy = -7;
+      ball.lastShooter = -1;
+      ball.touchedRim = true;
+      h.stunCooldown = 18; d.stunCooldown = 12;
+    }
+  }
+
+  // Ball physics
+  const ball = s.ball;
+  ball.prevY = ball.y;
+  if (ball.holder !== null) {
+    const h = s.players[ball.holder];
+    ball.x = h.x + CFG.P_W / 2 + h.facing * 18;
+    ball.y = h.y + 30;
+    ball.vx = 0; ball.vy = 0;
+  } else {
+    ball.vy += CFG.GRAVITY * 0.92;
+    ball.vx *= CFG.BALL_AIR; ball.vy *= CFG.BALL_AIR;
+    ball.x += ball.vx; ball.y += ball.vy;
+
+    // floor
+    if (ball.y + CFG.BALL_R >= CFG.GROUND) {
+      ball.y = CFG.GROUND - CFG.BALL_R;
+      ball.vy = -ball.vy * CFG.BALL_BOUNCE;
+      ball.vx *= 0.94;
+      if (Math.abs(ball.vy) < 1.4) ball.vy = 0;
+    }
+    // walls
+    if (ball.x - CFG.BALL_R < 25) { ball.x = 25 + CFG.BALL_R; ball.vx = -ball.vx * 0.7; }
+    if (ball.x + CFG.BALL_R > CFG.W - 25) { ball.x = CFG.W - 25 - CFG.BALL_R; ball.vx = -ball.vx * 0.7; }
+
+    // backboards
+    backboardCollide(ball, CFG.HOOP_LX - 38, true);
+    backboardCollide(ball, CFG.HOOP_RX + 38, false);
+
+    // rim posts
+    rimCollide(ball, CFG.HOOP_LX - CFG.RIM_W / 2 + 8, CFG.RIM_Y);
+    rimCollide(ball, CFG.HOOP_LX + CFG.RIM_W / 2, CFG.RIM_Y);
+    rimCollide(ball, CFG.HOOP_RX - CFG.RIM_W / 2, CFG.RIM_Y);
+    rimCollide(ball, CFG.HOOP_RX + CFG.RIM_W / 2 - 8, CFG.RIM_Y);
+
+    // scoring (ball passes through rim moving down)
+    checkScore(s, CFG.HOOP_RX, 0); // Red shoots into right hoop
+    checkScore(s, CFG.HOOP_LX, 1); // Blue shoots into left hoop
+
+    // pickup
+    for (const p of s.players) {
+      if (p.stunCooldown > 0) continue;
+      const dx = ball.x - (p.x + CFG.P_W / 2);
+      const dy = ball.y - (p.y + CFG.P_H / 2);
+      if (Math.hypot(dx, dy) < 38) {
+        if (ball.lastShooter !== p.id || ball.touchedRim || ball.lastShooter === -1) {
+          ball.holder = p.id;
+          ball.lastShooter = -1;
+          ball.touchedRim = false;
+          ball.vx = 0; ball.vy = 0;
+          break;
+        }
+      }
+    }
+  }
+
+  if (s.score[0] >= CFG.WIN_SCORE) s.winner = 0;
+  if (s.score[1] >= CFG.WIN_SCORE) s.winner = 1;
+}
+
+function rectsOverlap(ax, ay, aw, ah, bx, by, bw, bh) {
+  return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+}
+function rimCollide(b, rx, ry) {
+  const dx = b.x - rx, dy = b.y - ry;
+  const d = Math.hypot(dx, dy);
+  if (d < CFG.BALL_R + 4 && d > 0) {
+    const nx = dx / d, ny = dy / d;
+    b.x = rx + nx * (CFG.BALL_R + 4);
+    b.y = ry + ny * (CFG.BALL_R + 4);
+    const dot = b.vx * nx + b.vy * ny;
+    b.vx = (b.vx - 2 * dot * nx) * 0.55;
+    b.vy = (b.vy - 2 * dot * ny) * 0.55;
+    b.touchedRim = true;
+  }
+}
+function backboardCollide(b, bx, isLeft) {
+  if (b.y < CFG.BACKBOARD_Y || b.y > CFG.BACKBOARD_Y + CFG.BACKBOARD_H) return;
+  if (isLeft && b.x - CFG.BALL_R < bx && b.x - CFG.BALL_R > bx - 14 && b.vx < 0) {
+    b.x = bx + CFG.BALL_R; b.vx = -b.vx * 0.55; b.touchedRim = true;
+  }
+  if (!isLeft && b.x + CFG.BALL_R > bx && b.x + CFG.BALL_R < bx + 14 && b.vx > 0) {
+    b.x = bx - CFG.BALL_R; b.vx = -b.vx * 0.55; b.touchedRim = true;
+  }
+}
+function checkScore(s, hoopX, scorerId) {
+  const b = s.ball;
+  if (b.prevY < CFG.RIM_Y && b.y >= CFG.RIM_Y && Math.abs(b.x - hoopX) < CFG.RIM_W / 2 - 6 && b.vy > 0) {
+    let pts = 2;
+    if (b.scoredFromX !== null) {
+      if (scorerId === 0 && b.scoredFromX < CFG.THREE_LINE_L) pts = 3;
+      if (scorerId === 1 && b.scoredFromX > CFG.THREE_LINE_R) pts = 3;
+    }
+    s.score[scorerId] += pts;
+    flashScore = { side: scorerId, pts, t: 70 };
+    if (s.score[scorerId] < CFG.WIN_SCORE) resetAfterScore(s, scorerId);
+    else { s.winner = scorerId; }
+  }
+}
+function resetAfterScore(s, scorerId) {
+  const giveTo = 1 - scorerId;
+  s.players[0] = makePlayer(0);
+  s.players[1] = makePlayer(1);
+  s.ball = { x: giveTo === 0 ? 420 : 780, y: 380, vx: 0, vy: 0, holder: giveTo, lastShooter: -1, scoredFromX: null, touchedRim: false, prevY: 380 };
+  s.freeze = 45;
+}
+function shoot(s, p) {
+  const b = s.ball;
+  if (b.holder !== p.id) return;
+  const charge = p.shootCharge / CFG.SHOOT_MAX_CHARGE;
+  const targetX = p.id === 0 ? CFG.HOOP_RX : CFG.HOOP_LX;
+  const targetY = CFG.RIM_Y - 10;
+  const sx = b.x, sy = b.y;
+  const dx = targetX - sx;
+  const dist = Math.abs(dx);
+  // flight time scales with distance — sweet spot at ~70% charge
+  const ideal = Math.min(0.9, 0.45 + dist / 1600);
+  const accuracy = 1 - Math.min(1, Math.abs(charge - ideal) * 2.4);
+  const t = 56 + dist * 0.04;
+  const g = CFG.GRAVITY * 0.92;
+  const vx = dx / t;
+  const vy = (targetY - sy - 0.5 * g * t * t) / t;
+  // off-target error grows when accuracy is low; small randomness for AI feel
+  const errX = (1 - accuracy) * (Math.random() < 0.5 ? -1 : 1) * (28 + dist * 0.012);
+  const errY = (1 - accuracy) * (Math.random() < 0.5 ? -1 : 1) * 6;
+  b.vx = vx + errX * 0.06;
+  b.vy = vy + errY * 0.06;
+  // also nudge by error in flight by mis-aiming target
+  b.vx += (1 - accuracy) * (Math.random() - 0.5) * 4;
+  b.holder = null;
+  b.lastShooter = p.id;
+  b.scoredFromX = p.x + CFG.P_W / 2;
+  b.touchedRim = false;
+  p.stunCooldown = 8;
+}
+
+// ============================================================
+// CPU AI (drives state.inputs[1] when in vs-CPU mode)
+// ============================================================
+let aiState = { shootHoldTimer: 0, jumpCooldown: 0, decisionTimer: 0, currentPlan: 'idle' };
+function aiThink(s) {
+  const me = s.players[1], opp = s.players[0], b = s.ball;
+  const inp = s.inputs[1];
+  inp.left = inp.right = inp.jump = inp.shoot = false;
+  if (s.freeze > 0 || s.winner !== null) return;
+  aiState.decisionTimer--;
+  aiState.jumpCooldown = Math.max(0, aiState.jumpCooldown - 1);
+
+  if (b.holder === 1) {
+    // Move toward left hoop until in range, then shoot
+    const targetX = 720 + Math.random() * 80;
+    if (me.x > targetX + 12) inp.left = true;
+    else if (me.x < targetX - 12) inp.right = true;
+    // shoot when settled and at right distance
+    const dist = Math.abs(me.x - CFG.HOOP_LX);
+    if (dist > 250 && dist < 600 && me.onGround) {
+      aiState.shootHoldTimer++;
+      const target = 26 + Math.floor((dist - 250) * 0.04);
+      if (aiState.shootHoldTimer < target) inp.shoot = true;
+      else { inp.shoot = false; aiState.shootHoldTimer = 0; }
+    } else if (me.onGround && Math.random() < 0.01 && me.x > 600) {
+      inp.jump = true;
+    }
+  } else if (b.holder === 0) {
+    // Defend: chase opponent, jump to block when close
+    if (opp.x > me.x) inp.right = true; else inp.left = true;
+    if (Math.abs(opp.x - me.x) < 80 && aiState.jumpCooldown === 0 && me.onGround && Math.random() < 0.06) {
+      inp.jump = true; aiState.jumpCooldown = 40;
+    }
+  } else {
+    // Loose ball — chase
+    if (b.x > me.x + 5) inp.right = true;
+    else if (b.x < me.x - 5) inp.left = true;
+    if (b.y < me.y + 20 && Math.abs(b.x - (me.x + CFG.P_W / 2)) < 60 && me.onGround && aiState.jumpCooldown === 0) {
+      inp.jump = true; aiState.jumpCooldown = 30;
+    }
+  }
+}
+
+// ============================================================
+// RENDERING
+// ============================================================
+let flashScore = null;
+function render(s) {
+  const ctxv = ctx;
+  // background
+  const grad = ctxv.createLinearGradient(0, 0, 0, CFG.H);
+  grad.addColorStop(0, "#1b2a4e");
+  grad.addColorStop(0.6, "#243a6c");
+  grad.addColorStop(0.6001, "#3a2a1a");
+  grad.addColorStop(1, "#5a3a20");
+  ctxv.fillStyle = grad;
+  ctxv.fillRect(0, 0, CFG.W, CFG.H);
+
+  // Crowd silhouette
+  ctxv.fillStyle = "rgba(0,0,0,0.35)";
+  for (let i = 0; i < 30; i++) {
+    const cx = i * 42 + 10, cy = 320 + Math.sin(i * 1.7) * 8;
+    ctxv.beginPath(); ctxv.arc(cx, cy, 14, 0, Math.PI * 2); ctxv.fill();
+    ctxv.fillRect(cx - 10, cy, 20, 24);
+  }
+
+  // Court floor
+  ctxv.fillStyle = "#5a3a20";
+  ctxv.fillRect(0, CFG.GROUND, CFG.W, CFG.H - CFG.GROUND);
+  // Floor lines
+  ctxv.strokeStyle = "#ffd6a8"; ctxv.lineWidth = 3;
+  ctxv.strokeRect(25, CFG.GROUND + 4, CFG.W - 50, CFG.H - CFG.GROUND - 8);
+  ctxv.beginPath(); ctxv.moveTo(CFG.W / 2, CFG.GROUND); ctxv.lineTo(CFG.W / 2, CFG.H); ctxv.stroke();
+  // Three-point arcs (top-down projection — schematic)
+  ctxv.beginPath(); ctxv.arc(CFG.HOOP_LX, CFG.GROUND, 250, -Math.PI / 2, Math.PI / 2); ctxv.stroke();
+  ctxv.beginPath(); ctxv.arc(CFG.HOOP_RX, CFG.GROUND, 250, Math.PI / 2, Math.PI * 1.5); ctxv.stroke();
+
+  // Hoops (left and right)
+  drawHoop(CFG.HOOP_LX, true);
+  drawHoop(CFG.HOOP_RX, false);
+
+  // Players
+  drawPlayer(s.players[0], "#ff5b5b", "#c63030");
+  drawPlayer(s.players[1], "#5b8cff", "#3050c0");
+
+  // Ball
+  drawBall(s.ball);
+
+  // Charge meter
+  for (const p of s.players) {
+    if (p.charging && p.shootCharge > 0) {
+      const w = (p.shootCharge / CFG.SHOOT_MAX_CHARGE) * 60;
+      ctxv.fillStyle = "rgba(0,0,0,0.55)";
+      ctxv.fillRect(p.x - 10, p.y - 18, 64, 8);
+      ctxv.fillStyle = p.shootCharge > CFG.SHOOT_MAX_CHARGE * 0.55 && p.shootCharge < CFG.SHOOT_MAX_CHARGE * 0.85 ? "#7fff7f" : "#ffb74d";
+      ctxv.fillRect(p.x - 9, p.y - 17, w + 2, 6);
+    }
+  }
+
+  // Score flash
+  if (flashScore) {
+    flashScore.t--;
+    const alpha = Math.min(1, flashScore.t / 30);
+    ctxv.fillStyle = `rgba(255, 215, 80, ${alpha})`;
+    ctxv.font = "bold 96px -apple-system, sans-serif";
+    ctxv.textAlign = "center";
+    ctxv.fillText(`+${flashScore.pts}`, flashScore.side === 0 ? 420 : 780, 220);
+    if (flashScore.t <= 0) flashScore = null;
+  }
+
+  // Freeze countdown
+  if (s.freeze > 0 && s.winner === null) {
+    ctxv.fillStyle = "rgba(0,0,0,0.5)";
+    ctxv.fillRect(0, 0, CFG.W, CFG.H);
+    ctxv.fillStyle = "#fff";
+    ctxv.font = "bold 80px -apple-system, sans-serif";
+    ctxv.textAlign = "center";
+    ctxv.fillText(Math.ceil(s.freeze / 60 * 3) || "GO", CFG.W / 2, CFG.H / 2);
+  }
+}
+function drawHoop(x, isLeft) {
+  const dir = isLeft ? 1 : -1;
+  // pole
+  ctx.fillStyle = "#888"; ctx.fillRect(x - dir * 38 - 3, 60, 6, CFG.GROUND - 60);
+  // backboard
+  ctx.fillStyle = "#fff"; ctx.fillRect(x - dir * 38 - (isLeft ? 0 : 8), CFG.BACKBOARD_Y, 8, CFG.BACKBOARD_H);
+  ctx.strokeStyle = "#222"; ctx.lineWidth = 2;
+  ctx.strokeRect(x - dir * 38 - (isLeft ? 0 : 8), CFG.BACKBOARD_Y, 8, CFG.BACKBOARD_H);
+  // square on backboard
+  ctx.strokeStyle = "#c00";
+  ctx.strokeRect(x - dir * 30, CFG.RIM_Y - 50, 18 * dir, 36);
+  // rim
+  ctx.strokeStyle = "#ff4500"; ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(x - CFG.RIM_W / 2, CFG.RIM_Y);
+  ctx.lineTo(x + CFG.RIM_W / 2, CFG.RIM_Y);
+  ctx.stroke();
+  // net
+  ctx.strokeStyle = "rgba(255,255,255,0.7)"; ctx.lineWidth = 1.5;
+  for (let i = 0; i < 7; i++) {
+    const t = i / 6;
+    const sx = x - CFG.RIM_W / 2 + t * CFG.RIM_W;
+    const ex = x - CFG.RIM_W / 4 + t * CFG.RIM_W / 2;
+    ctx.beginPath(); ctx.moveTo(sx, CFG.RIM_Y); ctx.lineTo(ex, CFG.RIM_Y + 32); ctx.stroke();
+  }
+  // horizontal net rings
+  ctx.beginPath(); ctx.moveTo(x - CFG.RIM_W / 2 + 4, CFG.RIM_Y + 12); ctx.lineTo(x + CFG.RIM_W / 2 - 4, CFG.RIM_Y + 12); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x - CFG.RIM_W / 2 + 8, CFG.RIM_Y + 24); ctx.lineTo(x + CFG.RIM_W / 2 - 8, CFG.RIM_Y + 24); ctx.stroke();
+}
+function drawPlayer(p, body, dark) {
+  const cx = p.x + CFG.P_W / 2;
+  // shadow
+  ctx.fillStyle = "rgba(0,0,0,0.35)";
+  ctx.beginPath(); ctx.ellipse(cx, CFG.GROUND + 6, CFG.P_W * 0.55, 7, 0, 0, Math.PI * 2); ctx.fill();
+  // legs
+  ctx.fillStyle = dark;
+  const legSwing = Math.sin(p.x * 0.08) * 4 * (Math.abs(p.vx) > 0.5 ? 1 : 0);
+  ctx.fillRect(p.x + 6, p.y + 50, 12, 36 + legSwing);
+  ctx.fillRect(p.x + CFG.P_W - 18, p.y + 50, 12, 36 - legSwing);
+  // body
+  ctx.fillStyle = body;
+  roundRect(p.x + 4, p.y + 18, CFG.P_W - 8, 42, 6); ctx.fill();
+  // arms
+  ctx.fillStyle = body;
+  const armUp = p.charging ? -28 : (p.vy < -2 ? -16 : 0);
+  ctx.fillRect(p.x - 4 + (p.facing === 1 ? 0 : 0), p.y + 22 + armUp * 0.5, 10, 28);
+  ctx.fillRect(p.x + CFG.P_W - 6, p.y + 22 + armUp * 0.5, 10, 28);
+  // head
+  ctx.fillStyle = "#f4c89a";
+  ctx.beginPath(); ctx.arc(cx, p.y + 12, 13, 0, Math.PI * 2); ctx.fill();
+  // headband
+  ctx.fillStyle = body;
+  ctx.fillRect(cx - 13, p.y + 6, 26, 4);
+  // eye / facing
+  ctx.fillStyle = "#222";
+  ctx.beginPath(); ctx.arc(cx + p.facing * 5, p.y + 12, 1.8, 0, Math.PI * 2); ctx.fill();
+}
+function drawBall(b) {
+  ctx.save();
+  ctx.translate(b.x, b.y);
+  ctx.rotate((b.x + b.y) * 0.02);
+  ctx.fillStyle = "#ff8c2b";
+  ctx.beginPath(); ctx.arc(0, 0, CFG.BALL_R, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "#3a1a05"; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(-CFG.BALL_R, 0); ctx.lineTo(CFG.BALL_R, 0); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, -CFG.BALL_R); ctx.lineTo(0, CFG.BALL_R); ctx.stroke();
+  ctx.beginPath(); ctx.arc(0, 0, CFG.BALL_R, -Math.PI * 0.85, -Math.PI * 0.15); ctx.stroke();
+  ctx.beginPath(); ctx.arc(0, 0, CFG.BALL_R, Math.PI * 0.15, Math.PI * 0.85); ctx.stroke();
+  ctx.restore();
+}
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y);
+}
+
+// ============================================================
+// INPUT
+// ============================================================
+const keysDown = {};
+const localInputs = [emptyInput(), emptyInput()];
+const keyMap0 = { KeyA: "left", KeyD: "right", KeyW: "jump", KeyF: "shoot", Space: "shoot" };
+const keyMap1 = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "jump", KeyL: "shoot" };
+
+window.addEventListener("keydown", (e) => {
+  if (mode === "menu") return;
+  if (keyMap0[e.code]) { localInputs[0][keyMap0[e.code]] = true; e.preventDefault(); }
+  if ((mode === "local") && keyMap1[e.code]) { localInputs[1][keyMap1[e.code]] = true; e.preventDefault(); }
+});
+window.addEventListener("keyup", (e) => {
+  if (keyMap0[e.code]) localInputs[0][keyMap0[e.code]] = false;
+  if (keyMap1[e.code]) localInputs[1][keyMap1[e.code]] = false;
+});
+
+// Touch controls drive localInputs[0]
+const touchEls = document.querySelectorAll(".tc");
+touchEls.forEach((el) => {
+  const k = el.dataset.key;
+  const start = (e) => { e.preventDefault(); el.classList.add("active"); localInputs[0][k] = true; };
+  const end = (e) => { e.preventDefault(); el.classList.remove("active"); localInputs[0][k] = false; };
+  el.addEventListener("touchstart", start, { passive: false });
+  el.addEventListener("touchend", end, { passive: false });
+  el.addEventListener("touchcancel", end, { passive: false });
+  el.addEventListener("mousedown", start);
+  el.addEventListener("mouseup", end);
+  el.addEventListener("mouseleave", end);
+});
+
+// ============================================================
+// MAIN LOOP
+// ============================================================
+let lastT = performance.now();
+let acc = 0;
+function loop(t) {
+  const dt = t - lastT; lastT = t;
+
+  if (mode === "cpu" || mode === "local") {
+    state.inputs[0] = { ...localInputs[0] };
+    if (mode === "cpu") aiThink(state);
+    else state.inputs[1] = { ...localInputs[1] };
+    acc += dt;
+    while (acc > 1000 / CFG.TICK_HZ) { step(state); acc -= 1000 / CFG.TICK_HZ; }
+    render(state);
+    updateHud(state);
+    checkGameOver(state);
+  } else if (mode === "host") {
+    // Host runs sim using local inputs as P0, peer inputs as P1 (already merged in onMessage)
+    state.inputs[0] = { ...localInputs[0] };
+    acc += dt;
+    while (acc > 1000 / CFG.TICK_HZ) { step(state); acc -= 1000 / CFG.TICK_HZ; }
+    render(state);
+    updateHud(state);
+    checkGameOver(state);
+    // send state at NET_HZ
+    if (netConn && netConn.open && t - netLastSendT > 1000 / CFG.NET_HZ) {
+      netLastSendT = t;
+      try { netConn.send({ type: "state", s: snapshotState(state) }); } catch (e) {}
+    }
+  } else if (mode === "join") {
+    // Peer: send local inputs as P1; render last received state with mild interpolation
+    if (netConn && netConn.open && t - netLastSendT > 1000 / CFG.NET_HZ) {
+      netLastSendT = t;
+      try { netConn.send({ type: "input", inp: { ...localInputs[0] } }); } catch (e) {}
+    }
+    if (lerpState) { render(lerpState); updateHud(lerpState); checkGameOver(lerpState); }
+  } else {
+    // menu — passive render so canvas isn't black if visible
+    ctx.fillStyle = "#0a0a0f";
+    ctx.fillRect(0, 0, CFG.W, CFG.H);
+  }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+function updateHud(s) {
+  s0el.textContent = s.score[0];
+  s1el.textContent = s.score[1];
+}
+
+function checkGameOver(s) {
+  if (s.winner !== null && statusEl.style.display !== "block") {
+    const youWin = (mode === "cpu" || mode === "host") ? s.winner === 0 : s.winner === 1;
+    const winnerName = s.winner === 0 ? "Red" : "Blue";
+    showStatus(`${winnerName} wins! ${s.score[0]} – ${s.score[1]}<br><button class="btn" id="rematch">Rematch</button> <button class="btn secondary" id="toMenu">Menu</button>`);
+    setTimeout(() => {
+      const r = document.getElementById("rematch"); if (r) r.onclick = () => { state = newState(); hideStatus(); };
+      const m = document.getElementById("toMenu"); if (m) m.onclick = () => goMenu();
+    }, 50);
+  }
+}
+
+function showStatus(html) { statusEl.innerHTML = html; statusEl.style.display = "block"; }
+function hideStatus() { statusEl.style.display = "none"; }
+
+// ============================================================
+// NETWORKING (PeerJS)
+// ============================================================
+function snapshotState(s) {
+  return {
+    p: s.players.map((p) => ({ x: p.x | 0, y: p.y | 0, vx: +p.vx.toFixed(1), vy: +p.vy.toFixed(1), f: p.facing, c: p.charging ? p.shootCharge : 0 })),
+    b: { x: s.ball.x | 0, y: s.ball.y | 0, vx: +s.ball.vx.toFixed(1), vy: +s.ball.vy.toFixed(1), h: s.ball.holder },
+    s: s.score, w: s.winner, f: s.freeze, t: s.tick,
+  };
+}
+function applySnapshot(snap) {
+  if (!lerpState) lerpState = newState();
+  for (let i = 0; i < 2; i++) {
+    const sp = snap.p[i], lp = lerpState.players[i];
+    lp.x = sp.x; lp.y = sp.y; lp.vx = sp.vx; lp.vy = sp.vy; lp.facing = sp.f;
+    lp.charging = sp.c > 0; lp.shootCharge = sp.c;
+  }
+  lerpState.ball.x = snap.b.x; lerpState.ball.y = snap.b.y;
+  lerpState.ball.vx = snap.b.vx; lerpState.ball.vy = snap.b.vy;
+  lerpState.ball.holder = snap.b.h;
+  lerpState.score = snap.s; lerpState.winner = snap.w; lerpState.freeze = snap.f;
+}
+
+function makeRoomCode() {
+  const a = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let s = "";
+  for (let i = 0; i < 6; i++) s += a[Math.floor(Math.random() * a.length)];
+  return s;
+}
+
+function startHost() {
+  const code = makeRoomCode();
+  const peerId = CFG.PEER_PREFIX + code;
+  document.getElementById("hostRow").style.display = "flex";
+  document.getElementById("hostCode").value = code;
+  document.getElementById("hostStatus").textContent = "Connecting to signaling…";
+  document.getElementById("hostStatus").style.display = "block";
+  netPeer = new Peer(peerId, { debug: 0 });
+  netPeer.on("open", () => {
+    document.getElementById("hostStatus").textContent = "Waiting for friend to join — code: " + code;
+  });
+  netPeer.on("error", (e) => {
+    document.getElementById("hostStatus").textContent = "Error: " + (e.type || e.message || "unknown");
+  });
+  netPeer.on("connection", (conn) => {
+    netConn = conn;
+    document.getElementById("hostStatus").textContent = "Friend connected — starting game…";
+    conn.on("open", () => {
+      conn.on("data", (d) => {
+        if (d && d.type === "input") state.inputs[1] = d.inp;
+      });
+      conn.on("close", onPeerDisconnect);
+      conn.on("error", onPeerDisconnect);
+      // start game
+      mode = "host"; role = "host";
+      state = newState();
+      menu.style.display = "none";
+      hud.style.display = "flex";
+      backBtn.style.display = "block";
+      modeLbl.textContent = "Online · You: Red";
+    });
+  });
+}
+
+function joinRoom(code) {
+  if (!code) return;
+  const peerId = CFG.PEER_PREFIX + code.toUpperCase();
+  document.getElementById("joinStatus").textContent = "Connecting…";
+  document.getElementById("joinStatus").style.display = "block";
+  netPeer = new Peer({ debug: 0 });
+  netPeer.on("open", () => {
+    netConn = netPeer.connect(peerId, { reliable: false });
+    netConn.on("open", () => {
+      document.getElementById("joinStatus").textContent = "Connected — starting game…";
+      mode = "join"; role = "peer";
+      lerpState = newState();
+      menu.style.display = "none";
+      hud.style.display = "flex";
+      backBtn.style.display = "block";
+      modeLbl.textContent = "Online · You: Blue";
+    });
+    netConn.on("data", (d) => {
+      if (d && d.type === "state") applySnapshot(d.s);
+    });
+    netConn.on("close", onPeerDisconnect);
+    netConn.on("error", onPeerDisconnect);
+  });
+  netPeer.on("error", (e) => {
+    document.getElementById("joinStatus").textContent = "Error: " + (e.type || e.message || "could not connect");
+  });
+}
+
+function onPeerDisconnect() {
+  if (mode !== "host" && mode !== "join") return;
+  showStatus(`Opponent disconnected.<br><button class="btn" id="toMenu">Menu</button>`);
+  setTimeout(() => { const m = document.getElementById("toMenu"); if (m) m.onclick = () => goMenu(); }, 50);
+}
+
+function teardownNet() {
+  try { if (netConn) netConn.close(); } catch (e) {}
+  try { if (netPeer) netPeer.destroy(); } catch (e) {}
+  netConn = null; netPeer = null;
+}
+
+// ============================================================
+// MENU + LIFECYCLE
+// ============================================================
+function goMenu() {
+  mode = "menu";
+  teardownNet();
+  state = newState();
+  lerpState = null;
+  menu.style.display = "flex";
+  hud.style.display = "none";
+  backBtn.style.display = "none";
+  hideStatus();
+  document.getElementById("hostRow").style.display = "none";
+  document.getElementById("hostStatus").style.display = "none";
+  document.getElementById("joinStatus").style.display = "none";
+  for (let i = 0; i < 2; i++) { localInputs[i] = emptyInput(); }
+}
+
+document.querySelectorAll(".menu-card").forEach((card) => {
+  card.addEventListener("click", () => {
+    const m = card.dataset.mode;
+    if (m === "cpu" || m === "local") {
+      mode = m;
+      state = newState();
+      menu.style.display = "none";
+      hud.style.display = "flex";
+      backBtn.style.display = "block";
+      modeLbl.textContent = m === "cpu" ? "vs CPU" : "Local 2 Player";
+      hideStatus();
+    } else if (m === "host") {
+      startHost();
+    } else if (m === "join") {
+      const code = document.getElementById("joinCode").value.trim();
+      if (code) joinRoom(code);
+      else document.getElementById("joinCode").focus();
+    }
+  });
+});
+
+document.getElementById("hostCopy").addEventListener("click", (e) => {
+  e.stopPropagation();
+  const v = document.getElementById("hostCode").value;
+  if (!v) return;
+  navigator.clipboard?.writeText(v);
+  e.target.textContent = "Copied!";
+  setTimeout(() => (e.target.textContent = "Copy"), 1200);
+});
+
+document.getElementById("joinBtn").addEventListener("click", (e) => {
+  e.stopPropagation();
+  const code = document.getElementById("joinCode").value.trim();
+  if (code) joinRoom(code);
+});
+document.getElementById("joinCode").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    const code = e.target.value.trim();
+    if (code) joinRoom(code);
+  }
+});
+
+backBtn.addEventListener("click", () => goMenu());
+</script>
+</body>
+</html>
