@@ -23,11 +23,13 @@
   #touch { position: fixed; inset: auto 0 0 0; height: 35vh; pointer-events: none; z-index: 6; display: none; }
   .tc { position: absolute; pointer-events: auto; background: rgba(255, 255, 255, 0.08); border: 2px solid rgba(255, 255, 255, 0.22); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: rgba(255, 255, 255, 0.7); font-size: 0.95rem; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); transition: background 0.05s, border-color 0.05s; }
   .tc.active { background: rgba(255, 123, 0, 0.45); border-color: #ff7b00; color: #fff; }
-  .tc-l { left: max(env(safe-area-inset-left, 1rem), 4vw); bottom: 4vh; width: 78px; height: 78px; }
-  .tc-r { left: calc(max(env(safe-area-inset-left, 1rem), 4vw) + 88px); bottom: 4vh; width: 78px; height: 78px; }
-  .tc-steal { right: calc(max(env(safe-area-inset-right, 1rem), 4vw) + 184px); bottom: 4vh; width: 76px; height: 76px; background: rgba(120, 230, 255, 0.14); border-color: rgba(120, 230, 255, 0.45); color: #b8e8ff; font-size: 0.78rem; }
-  .tc-jump { right: calc(max(env(safe-area-inset-right, 1rem), 4vw) + 92px); bottom: 4vh; width: 84px; height: 84px; }
-  .tc-shoot { right: max(env(safe-area-inset-right, 1rem), 4vw); bottom: 4vh; width: 84px; height: 84px; background: rgba(255, 123, 0, 0.18); border-color: rgba(255, 123, 0, 0.5); color: #ffd6a8; }
+  .tc-l { left: max(env(safe-area-inset-left, 1rem), 4vw); bottom: 4vh; width: 80px; height: 80px; }
+  .tc-r { left: calc(max(env(safe-area-inset-left, 1rem), 4vw) + 90px); bottom: 4vh; width: 80px; height: 80px; }
+  /* Right cluster: 2x2 grid (top: STEAL, DRIB · bottom: JUMP, SHOOT) */
+  .tc-steal   { right: calc(max(env(safe-area-inset-right, 1rem), 4vw) + 90px); bottom: calc(4vh + 88px); width: 80px; height: 80px; background: rgba(120, 230, 255, 0.14); border-color: rgba(120, 230, 255, 0.45); color: #b8e8ff; font-size: 0.78rem; }
+  .tc-dribble { right: max(env(safe-area-inset-right, 1rem), 4vw);              bottom: calc(4vh + 88px); width: 80px; height: 80px; background: rgba(150, 255, 180, 0.14); border-color: rgba(150, 255, 180, 0.45); color: #c0ffd0; font-size: 0.85rem; }
+  .tc-jump    { right: calc(max(env(safe-area-inset-right, 1rem), 4vw) + 90px); bottom: 4vh; width: 80px; height: 80px; }
+  .tc-shoot   { right: max(env(safe-area-inset-right, 1rem), 4vw);              bottom: 4vh; width: 80px; height: 80px; background: rgba(255, 123, 0, 0.18); border-color: rgba(255, 123, 0, 0.5); color: #ffd6a8; }
 
   .back { position: fixed; top: calc(env(safe-area-inset-top, 0.5rem) + 0.5rem); left: 0.75rem; z-index: 7; display: none; }
 
@@ -50,10 +52,12 @@
 
   @media (pointer: coarse) { #touch { display: block; } }
   @media (max-height: 520px), (max-width: 720px) {
-    .tc { width: 60px; height: 60px; font-size: 0.7rem; }
-    .tc-r { left: calc(max(env(safe-area-inset-left, 1rem), 4vw) + 70px); }
-    .tc-steal { right: calc(max(env(safe-area-inset-right, 1rem), 4vw) + 148px); width: 58px; height: 58px; }
-    .tc-jump { right: calc(max(env(safe-area-inset-right, 1rem), 4vw) + 76px); }
+    .tc { width: 62px; height: 62px; font-size: 0.7rem; }
+    .tc-l, .tc-r, .tc-steal, .tc-dribble, .tc-jump, .tc-shoot { width: 62px; height: 62px; }
+    .tc-r       { left: calc(max(env(safe-area-inset-left, 1rem), 4vw) + 70px); }
+    .tc-steal   { right: calc(max(env(safe-area-inset-right, 1rem), 4vw) + 70px); bottom: calc(4vh + 70px); }
+    .tc-dribble { right: max(env(safe-area-inset-right, 1rem), 4vw);              bottom: calc(4vh + 70px); }
+    .tc-jump    { right: calc(max(env(safe-area-inset-right, 1rem), 4vw) + 70px); }
   }
 </style>
 </head>
@@ -70,6 +74,7 @@
   <div class="tc tc-l" data-key="left" aria-label="Left">◀</div>
   <div class="tc tc-r" data-key="right" aria-label="Right">▶</div>
   <div class="tc tc-steal" data-key="steal" aria-label="Steal">STEAL</div>
+  <div class="tc tc-dribble" data-key="dribble" aria-label="Dribble">DRIB</div>
   <div class="tc tc-jump" data-key="jump" aria-label="Jump">JUMP</div>
   <div class="tc tc-shoot" data-key="shoot" aria-label="Shoot">SHOOT</div>
 </div>
@@ -83,7 +88,7 @@
   <div class="menu-card" data-mode="cpu">
     <h3>vs CPU</h3>
     <p>Single player against the AI.</p>
-    <div class="ctrl-hint">Touch: on-screen pad · Keys: A/D · W jump · Space shoot · E steal</div>
+    <div class="ctrl-hint">Touch pad · Keys: A/D · W jump · Space shoot · E steal · Q dribble (sprint)</div>
   </div>
   <div class="menu-card" data-mode="tournament">
     <h3>Tournament</h3>
@@ -93,7 +98,7 @@
   <div class="menu-card" data-mode="local">
     <h3>Local 2 Player</h3>
     <p>Two players, same screen.</p>
-    <div class="ctrl-hint">Red: A/D/W/F/E · Blue: ←/→/↑/L/;</div>
+    <div class="ctrl-hint">Red: A/D/W/F/E · LShift dribble · Blue: ←/→/↑/L/; · RShift dribble</div>
   </div>
   <div class="menu-card" data-mode="host">
     <h3>Play with a Friend — Host</h3>
@@ -140,8 +145,8 @@ const CFG = {
   SHOOT_MIN_CHARGE: 3,
   THREE_LINE_L: 360,
   THREE_LINE_R: 840,
-  STEAL_RANGE: 78,
-  STEAL_COOLDOWN: 90,
+  STEAL_RANGE: 96,
+  STEAL_COOLDOWN: 60,
   PEER_PREFIX: "rivers-bbstars-",
   NET_HZ: 30,
   TICK_HZ: 60,
@@ -177,7 +182,7 @@ function newState(winTarget) {
     tick: 0,
   };
 }
-function emptyInput() { return { left: false, right: false, jump: false, shoot: false, steal: false }; }
+function emptyInput() { return { left: false, right: false, jump: false, shoot: false, steal: false, dribble: false }; }
 
 let state = newState();
 let mode = "menu"; // 'menu' | 'cpu' | 'tournament' | 'local' | 'host' | 'join'
@@ -218,7 +223,10 @@ function step(s) {
 
   for (const p of s.players) {
     const inp = s.inputs[p.id];
-    p.vx = (inp.left ? -CFG.P_SPEED : 0) + (inp.right ? CFG.P_SPEED : 0);
+    const sprint = (s.ball.holder === p.id && inp.dribble) ? 1.45 : 1;
+    p.dribbling = sprint > 1;
+    const sp = CFG.P_SPEED * sprint;
+    p.vx = (inp.left ? -sp : 0) + (inp.right ? sp : 0);
     if (inp.left && !inp.right) p.facing = -1;
     if (inp.right && !inp.left) p.facing = 1;
 
@@ -307,19 +315,18 @@ function step(s) {
     checkScore(s, CFG.HOOP_RX, 0); // Red shoots into right hoop
     checkScore(s, CFG.HOOP_LX, 1); // Blue shoots into left hoop
 
-    // pickup
+    // pickup — anyone can grab a loose ball; stunCooldown is the only block
+    // (the shooter has a stun applied in shoot() that prevents instant re-grab)
     for (const p of s.players) {
       if (p.stunCooldown > 0) continue;
       const dx = ball.x - (p.x + CFG.P_W / 2);
       const dy = ball.y - (p.y + CFG.P_H / 2);
-      if (Math.hypot(dx, dy) < 38) {
-        if (ball.lastShooter !== p.id || ball.touchedRim || ball.lastShooter === -1) {
-          ball.holder = p.id;
-          ball.lastShooter = -1;
-          ball.touchedRim = false;
-          ball.vx = 0; ball.vy = 0;
-          break;
-        }
+      if (Math.hypot(dx, dy) < 50) {
+        ball.holder = p.id;
+        ball.lastShooter = -1;
+        ball.touchedRim = false;
+        ball.vx = 0; ball.vy = 0;
+        break;
       }
     }
   }
@@ -681,8 +688,8 @@ function roundRect(x, y, w, h, r) {
 // ============================================================
 const keysDown = {};
 const localInputs = [emptyInput(), emptyInput()];
-const keyMap0 = { KeyA: "left", KeyD: "right", KeyW: "jump", KeyF: "shoot", Space: "shoot", KeyE: "steal", KeyS: "steal" };
-const keyMap1 = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "jump", KeyL: "shoot", Semicolon: "steal", ArrowDown: "steal" };
+const keyMap0 = { KeyA: "left", KeyD: "right", KeyW: "jump", KeyF: "shoot", Space: "shoot", KeyE: "steal", KeyQ: "dribble", ShiftLeft: "dribble" };
+const keyMap1 = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "jump", KeyL: "shoot", Semicolon: "steal", KeyK: "dribble", ShiftRight: "dribble" };
 
 window.addEventListener("keydown", (e) => {
   if (mode === "menu") return;
@@ -795,9 +802,9 @@ function hideStatus() { statusEl.style.display = "none"; }
 // ============================================================
 function snapshotState(s) {
   return {
-    p: s.players.map((p) => ({ x: p.x | 0, y: p.y | 0, vx: +p.vx.toFixed(1), vy: +p.vy.toFixed(1), f: p.facing, c: p.charging ? p.shootCharge : 0 })),
+    p: s.players.map((p) => ({ x: p.x | 0, y: p.y | 0, vx: +p.vx.toFixed(1), vy: +p.vy.toFixed(1), f: p.facing, c: p.charging ? p.shootCharge : 0, d: p.dribbling ? 1 : 0, df: p.dunkFlash | 0 })),
     b: { x: s.ball.x | 0, y: s.ball.y | 0, vx: +s.ball.vx.toFixed(1), vy: +s.ball.vy.toFixed(1), h: s.ball.holder },
-    s: s.score, w: s.winner, f: s.freeze, t: s.tick,
+    s: s.score, w: s.winner, f: s.freeze, t: s.tick, wt: s.winTarget,
   };
 }
 function applySnapshot(snap) {
@@ -806,11 +813,16 @@ function applySnapshot(snap) {
     const sp = snap.p[i], lp = lerpState.players[i];
     lp.x = sp.x; lp.y = sp.y; lp.vx = sp.vx; lp.vy = sp.vy; lp.facing = sp.f;
     lp.charging = sp.c > 0; lp.shootCharge = sp.c;
+    lp.dribbling = !!sp.d;
+    lp.dunkFlash = sp.df || 0;
   }
   lerpState.ball.x = snap.b.x; lerpState.ball.y = snap.b.y;
   lerpState.ball.vx = snap.b.vx; lerpState.ball.vy = snap.b.vy;
   lerpState.ball.holder = snap.b.h;
-  lerpState.score = snap.s; lerpState.winner = snap.w; lerpState.freeze = snap.f;
+  lerpState.score = snap.s;
+  if (snap.w !== undefined) lerpState.winner = snap.w;
+  lerpState.freeze = snap.f;
+  if (snap.wt) lerpState.winTarget = snap.wt;
 }
 
 function makeRoomCode() {
@@ -839,7 +851,7 @@ function startHost() {
     document.getElementById("hostStatus").textContent = "Friend connected — starting game…";
     // Register data/close listeners up-front to avoid missing any early packets
     conn.on("data", (d) => {
-      if (d && d.type === "input") state.inputs[1] = d.inp;
+      if (d && d.type === "input" && d.inp) state.inputs[1] = { ...emptyInput(), ...d.inp };
     });
     conn.on("close", onPeerDisconnect);
     conn.on("error", onPeerDisconnect);
