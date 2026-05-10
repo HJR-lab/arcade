@@ -221,7 +221,6 @@ function step(s) {
   }
 
   // Block / steal: defender jumping into holder knocks ball loose
-  const a = s.players[0], b = s.players[1];
   if (s.ball.holder !== null) {
     const h = s.players[s.ball.holder];
     const d = s.players[1 - s.ball.holder];
@@ -326,8 +325,10 @@ function checkScore(s, hoopX, scorerId) {
   if (b.prevY < CFG.RIM_Y && b.y >= CFG.RIM_Y && Math.abs(b.x - hoopX) < CFG.RIM_W / 2 - 6 && b.vy > 0) {
     let pts = 2;
     if (b.scoredFromX !== null) {
-      if (scorerId === 0 && b.scoredFromX < CFG.THREE_LINE_L) pts = 3;
-      if (scorerId === 1 && b.scoredFromX > CFG.THREE_LINE_R) pts = 3;
+      // Red (id 0) shoots right hoop: 3pt if shot from left of THREE_LINE_R
+      if (scorerId === 0 && b.scoredFromX < CFG.THREE_LINE_R) pts = 3;
+      // Blue (id 1) shoots left hoop: 3pt if shot from right of THREE_LINE_L
+      if (scorerId === 1 && b.scoredFromX > CFG.THREE_LINE_L) pts = 3;
     }
     s.score[scorerId] += pts;
     flashScore = { side: scorerId, pts, t: 70 };
@@ -375,42 +376,43 @@ function shoot(s, p) {
 // ============================================================
 // CPU AI (drives state.inputs[1] when in vs-CPU mode)
 // ============================================================
-let aiState = { shootHoldTimer: 0, jumpCooldown: 0, decisionTimer: 0, currentPlan: 'idle' };
+let aiState = { shootHoldTimer: 0, jumpCooldown: 0, spotX: 640 };
+function resetAi() { aiState = { shootHoldTimer: 0, jumpCooldown: 0, spotX: 600 + Math.random() * 120 }; }
 function aiThink(s) {
   const me = s.players[1], opp = s.players[0], b = s.ball;
   const inp = s.inputs[1];
   inp.left = inp.right = inp.jump = inp.shoot = false;
-  if (s.freeze > 0 || s.winner !== null) return;
-  aiState.decisionTimer--;
+  if (s.freeze > 0 || s.winner !== null) { aiState.shootHoldTimer = 0; return; }
   aiState.jumpCooldown = Math.max(0, aiState.jumpCooldown - 1);
 
   if (b.holder === 1) {
-    // Move toward left hoop until in range, then shoot
-    const targetX = 720 + Math.random() * 80;
-    if (me.x > targetX + 12) inp.left = true;
-    else if (me.x < targetX - 12) inp.right = true;
-    // shoot when settled and at right distance
+    // Move to a chosen spot in shooting range, then charge & release
+    if (me.x > aiState.spotX + 12) inp.left = true;
+    else if (me.x < aiState.spotX - 12) inp.right = true;
     const dist = Math.abs(me.x - CFG.HOOP_LX);
-    if (dist > 250 && dist < 600 && me.onGround) {
+    if (dist > 220 && dist < 760 && me.onGround) {
       aiState.shootHoldTimer++;
-      const target = 26 + Math.floor((dist - 250) * 0.04);
+      // Match physics' ideal charge: ideal = 0.45 + dist/1600, of SHOOT_MAX_CHARGE
+      const idealCharge = Math.min(0.9, 0.45 + dist / 1600) * CFG.SHOOT_MAX_CHARGE;
+      const target = Math.round(idealCharge + (Math.random() * 6 - 3));
       if (aiState.shootHoldTimer < target) inp.shoot = true;
-      else { inp.shoot = false; aiState.shootHoldTimer = 0; }
-    } else if (me.onGround && Math.random() < 0.01 && me.x > 600) {
-      inp.jump = true;
-    }
-  } else if (b.holder === 0) {
-    // Defend: chase opponent, jump to block when close
-    if (opp.x > me.x) inp.right = true; else inp.left = true;
-    if (Math.abs(opp.x - me.x) < 80 && aiState.jumpCooldown === 0 && me.onGround && Math.random() < 0.06) {
-      inp.jump = true; aiState.jumpCooldown = 40;
+      else { inp.shoot = false; aiState.shootHoldTimer = 0; aiState.spotX = 600 + Math.random() * 140; }
     }
   } else {
-    // Loose ball — chase
-    if (b.x > me.x + 5) inp.right = true;
-    else if (b.x < me.x - 5) inp.left = true;
-    if (b.y < me.y + 20 && Math.abs(b.x - (me.x + CFG.P_W / 2)) < 60 && me.onGround && aiState.jumpCooldown === 0) {
-      inp.jump = true; aiState.jumpCooldown = 30;
+    aiState.shootHoldTimer = 0;
+    if (b.holder === 0) {
+      // Defend: chase opponent, jump to block when close
+      if (opp.x > me.x + 4) inp.right = true; else if (opp.x < me.x - 4) inp.left = true;
+      if (Math.abs(opp.x - me.x) < 90 && aiState.jumpCooldown === 0 && me.onGround && Math.random() < 0.07) {
+        inp.jump = true; aiState.jumpCooldown = 40;
+      }
+    } else {
+      // Loose ball — chase
+      if (b.x > me.x + 5) inp.right = true;
+      else if (b.x < me.x - 5) inp.left = true;
+      if (b.y < me.y + 20 && Math.abs(b.x - (me.x + CFG.P_W / 2)) < 60 && me.onGround && aiState.jumpCooldown === 0) {
+        inp.jump = true; aiState.jumpCooldown = 30;
+      }
     }
   }
 }
@@ -594,10 +596,16 @@ const touchEls = document.querySelectorAll(".tc");
 touchEls.forEach((el) => {
   const k = el.dataset.key;
   const start = (e) => { e.preventDefault(); el.classList.add("active"); localInputs[0][k] = true; };
-  const end = (e) => { e.preventDefault(); el.classList.remove("active"); localInputs[0][k] = false; };
+  const end = (e) => { if (e && e.preventDefault) e.preventDefault(); el.classList.remove("active"); localInputs[0][k] = false; };
   el.addEventListener("touchstart", start, { passive: false });
   el.addEventListener("touchend", end, { passive: false });
   el.addEventListener("touchcancel", end, { passive: false });
+  el.addEventListener("touchmove", (e) => {
+    // Deactivate if finger slides outside the button
+    const t = e.touches[0]; if (!t) return end(e);
+    const r = el.getBoundingClientRect();
+    if (t.clientX < r.left || t.clientX > r.right || t.clientY < r.top || t.clientY > r.bottom) end(e);
+  }, { passive: false });
   el.addEventListener("mousedown", start);
   el.addEventListener("mouseup", end);
   el.addEventListener("mouseleave", end);
@@ -656,11 +664,16 @@ function updateHud(s) {
 
 function checkGameOver(s) {
   if (s.winner !== null && statusEl.style.display !== "block") {
-    const youWin = (mode === "cpu" || mode === "host") ? s.winner === 0 : s.winner === 1;
     const winnerName = s.winner === 0 ? "Red" : "Blue";
     showStatus(`${winnerName} wins! ${s.score[0]} – ${s.score[1]}<br><button class="btn" id="rematch">Rematch</button> <button class="btn secondary" id="toMenu">Menu</button>`);
     setTimeout(() => {
-      const r = document.getElementById("rematch"); if (r) r.onclick = () => { state = newState(); hideStatus(); };
+      const r = document.getElementById("rematch");
+      if (r) r.onclick = () => {
+        state = newState();
+        flashScore = null;
+        if (mode === "cpu") resetAi();
+        hideStatus();
+      };
       const m = document.getElementById("toMenu"); if (m) m.onclick = () => goMenu();
     }, 50);
   }
@@ -716,13 +729,13 @@ function startHost() {
   netPeer.on("connection", (conn) => {
     netConn = conn;
     document.getElementById("hostStatus").textContent = "Friend connected — starting game…";
+    // Register data/close listeners up-front to avoid missing any early packets
+    conn.on("data", (d) => {
+      if (d && d.type === "input") state.inputs[1] = d.inp;
+    });
+    conn.on("close", onPeerDisconnect);
+    conn.on("error", onPeerDisconnect);
     conn.on("open", () => {
-      conn.on("data", (d) => {
-        if (d && d.type === "input") state.inputs[1] = d.inp;
-      });
-      conn.on("close", onPeerDisconnect);
-      conn.on("error", onPeerDisconnect);
-      // start game
       mode = "host"; role = "host";
       state = newState();
       menu.style.display = "none";
@@ -763,6 +776,8 @@ function joinRoom(code) {
 
 function onPeerDisconnect() {
   if (mode !== "host" && mode !== "join") return;
+  // clear stale peer-driven inputs so the held player doesn't keep moving
+  state.inputs[1] = emptyInput();
   showStatus(`Opponent disconnected.<br><button class="btn" id="toMenu">Menu</button>`);
   setTimeout(() => { const m = document.getElementById("toMenu"); if (m) m.onclick = () => goMenu(); }, 50);
 }
@@ -781,6 +796,8 @@ function goMenu() {
   teardownNet();
   state = newState();
   lerpState = null;
+  flashScore = null;
+  resetAi();
   menu.style.display = "flex";
   hud.style.display = "none";
   backBtn.style.display = "none";
@@ -789,6 +806,8 @@ function goMenu() {
   document.getElementById("hostStatus").style.display = "none";
   document.getElementById("joinStatus").style.display = "none";
   for (let i = 0; i < 2; i++) { localInputs[i] = emptyInput(); }
+  // clear any active touch button states
+  document.querySelectorAll(".tc.active").forEach((el) => el.classList.remove("active"));
 }
 
 document.querySelectorAll(".menu-card").forEach((card) => {
@@ -797,6 +816,8 @@ document.querySelectorAll(".menu-card").forEach((card) => {
     if (m === "cpu" || m === "local") {
       mode = m;
       state = newState();
+      flashScore = null;
+      if (m === "cpu") resetAi();
       menu.style.display = "none";
       hud.style.display = "flex";
       backBtn.style.display = "block";
