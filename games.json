@@ -4,5 +4,6 @@
   { "id": "gravity-golf", "name": "Gravity Golf", "description": "" },
   { "id": "gravity-well", "name": "Gravity Well", "description": "" },
   { "id": "marketwatch", "name": "Market Watch — Personal Investing Dashboard", "description": "" },
-  { "id": "riveeeerrrrrr", "name": "Elemental Clash", "description": "" }
+  { "id": "riveeeerrrrrr", "name": "Elemental Clash", "description": "" },
+  { "id": "basketball-stars", "name": "Basketball Stars", "description": "1v1 half-court basketball — vs CPU, local 2-player, or online vs a friend" }
 ]
