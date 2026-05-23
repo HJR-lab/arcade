@@ -1,0 +1,1681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tag! - Hot Potato Elimination</title>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f0f1a;--card:#1a1a2e;--accent:#e94560;--accent2:#0f3460;
+  --win:#00c853;--lose:#ff1744;--draw:#ffd600;--text:#eee;--muted:#888;
+}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);
+  min-height:100vh;display:flex;flex-direction:column;align-items:center;overflow-x:hidden}
+h1{font-size:2.4rem;margin:28px 0 4px;letter-spacing:1px;text-align:center}
+h1 span{color:var(--accent)}
+.subtitle{color:var(--muted);margin-bottom:22px;font-size:.95rem;text-align:center}
+
+.container{display:flex;flex-direction:column;align-items:center;padding:0 20px 40px;width:100%;max-width:940px}
+.hidden{display:none!important}
+
+/* Screens */
+.screen{display:flex;flex-direction:column;align-items:center;gap:14px;width:100%;max-width:640px}
+
+/* Cards */
+.card{background:var(--card);border-radius:16px;padding:22px 26px;border:2px solid #222;width:100%}
+.card-title{font-size:.8rem;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:14px}
+
+/* Mode toggle */
+.mode-toggle{display:flex;gap:0;border-radius:30px;overflow:hidden;border:2px solid var(--accent);width:100%}
+.mode-btn{flex:1;padding:10px;cursor:pointer;background:transparent;color:var(--text);border:none;font-size:.9rem;transition:all .25s}
+.mode-btn.active{background:var(--accent);font-weight:600}
+
+/* Setup fields */
+.field-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.field-label{font-size:.85rem;color:var(--muted);min-width:90px}
+.field-input{padding:8px 14px;border-radius:10px;border:2px solid #333;background:var(--bg);color:var(--text);font-size:.9rem;outline:none;transition:border-color .2s}
+.field-input:focus{border-color:var(--accent)}
+select.field-input{cursor:pointer}
+
+/* Buttons */
+.btn{padding:11px 28px;border:none;border-radius:24px;font-size:.95rem;cursor:pointer;font-weight:600;transition:all .2s}
+.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{filter:brightness(1.15)}
+.btn-secondary{background:#333;color:var(--text)}.btn-secondary:hover{background:#444}
+.btn-success{background:var(--win);color:#111}.btn-success:hover{filter:brightness(1.1)}
+.btn-small{padding:7px 18px;font-size:.82rem;border-radius:16px}
+
+/* Online lobby */
+.lobby-section{display:flex;flex-direction:column;gap:10px;width:100%}
+.lobby-row{display:flex;gap:10px;align-items:center;width:100%}
+.lobby-input{flex:1;padding:10px 14px;border-radius:12px;border:2px solid #333;background:var(--bg);color:var(--text);font-size:.95rem;outline:none;transition:border-color .2s}
+.lobby-input:focus{border-color:var(--accent)}
+.room-code-display{font-size:1.5rem;font-weight:700;letter-spacing:6px;color:var(--accent);padding:10px 24px;background:var(--bg);border-radius:12px;cursor:pointer;transition:all .2s;border:2px dashed #333;text-align:center}
+.room-code-display:hover{border-color:var(--accent)}
+.lobby-status{font-size:.85rem;color:var(--muted);text-align:center;min-height:20px}
+.lobby-players{display:flex;flex-direction:column;gap:6px;width:100%}
+.lobby-player-row{display:flex;align-items:center;gap:10px;padding:8px 14px;border-radius:10px;background:var(--bg);font-size:.9rem}
+.player-dot{width:10px;height:10px;border-radius:50%;background:var(--win);flex-shrink:0}
+.player-dot.host{background:var(--accent)}
+.copied-toast{font-size:.75rem;color:var(--win);text-align:center;height:16px}
+
+/* Game wrapper */
+#gameWrapper{position:relative;display:none;flex-direction:column;align-items:center;width:100%}
+#gameWrapper.active{display:flex}
+#gameCanvas{border-radius:12px;display:block;border:2px solid #222}
+
+/* HUD */
+#hud{display:flex;justify-content:flex-start;align-items:center;width:100%;max-width:900px;padding:8px 4px;flex-wrap:wrap;gap:8px}
+.hud-timer{font-size:1.8rem;font-weight:900;color:var(--accent);letter-spacing:2px;min-width:56px}
+.hud-timer.urgent{animation:timerPulse .4s ease infinite alternate;color:var(--lose)}
+.hud-info{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.hud-pill{padding:4px 12px;border-radius:20px;background:var(--card);border:2px solid #333;font-size:.8rem;font-weight:600}
+.hud-pill.it{border-color:var(--lose);color:var(--lose)}
+.hud-pill.spectate{border-color:var(--draw);color:var(--draw)}
+
+/* Tag flash */
+#tagFlash{position:fixed;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:50;opacity:0;background:rgba(233,69,96,.25);transition:opacity .1s}
+
+/* Elimination flash overlay */
+#elimFlash{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.82);z-index:110;align-items:center;justify-content:center;backdrop-filter:blur(8px);flex-direction:column;gap:12px}
+#elimFlash.active{display:flex}
+.elim-banner{font-size:2.6rem;font-weight:900;color:var(--lose);text-shadow:0 0 30px rgba(255,23,68,.9);text-align:center;animation:pop .35s ease}
+.elim-sub{font-size:1rem;color:var(--muted);letter-spacing:1px}
+.elim-survivor{color:var(--win);font-size:2rem;font-weight:900;text-shadow:0 0 20px rgba(0,200,83,.7);animation:pop .35s ease}
+
+/* Round end / final screen */
+#roundEnd{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.82);z-index:100;align-items:center;justify-content:center;backdrop-filter:blur(6px)}
+#roundEnd.active{display:flex}
+.round-end-card{background:var(--card);border-radius:24px;padding:40px 50px;border:3px solid var(--accent);text-align:center;max-width:460px;width:90%;animation:pop .4s ease}
+.round-end-card h2{font-size:1.8rem;color:var(--win);margin-bottom:6px}
+.round-end-card h2.loser{color:var(--lose)}
+.leaderboard{display:flex;flex-direction:column;gap:8px;margin:18px 0}
+.lb-row{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;border-radius:10px;background:var(--bg);gap:12px}
+.lb-row.first{border:2px solid var(--draw);background:rgba(255,214,0,.06)}
+.lb-rank{font-size:1.1rem;font-weight:700;min-width:28px;color:var(--muted)}
+.lb-rank.gold{color:var(--draw)}
+.lb-name{flex:1;text-align:left;font-weight:600}
+.lb-detail{font-size:.78rem;color:var(--muted);margin-top:1px}
+.lb-badge{font-size:.8rem;font-weight:700;padding:2px 8px;border-radius:12px;background:rgba(0,200,83,.15);color:var(--win);border:1px solid rgba(0,200,83,.3)}
+.lb-badge.elim{background:rgba(255,23,68,.12);color:var(--lose);border-color:rgba(255,23,68,.25)}
+
+/* Status / spectator bar */
+#statusMsg{font-size:1rem;font-weight:700;min-height:28px;margin:4px 0;color:var(--draw);text-align:center}
+
+/* Eliminated side panel */
+#elimPanel{display:flex;flex-direction:column;gap:6px;width:100%;max-width:900px;padding:4px;margin-top:2px}
+.elim-entry{display:flex;align-items:center;gap:8px;font-size:.8rem;color:var(--muted);padding:4px 10px;background:var(--card);border-radius:8px;border:1px solid #222;opacity:.75}
+.elim-entry .elim-order{font-weight:700;color:var(--lose);min-width:20px}
+.elim-entry .elim-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;opacity:.6}
+.elim-panel-title{font-size:.7rem;text-transform:uppercase;letter-spacing:2px;color:#444;margin-bottom:2px}
+
+/* Error */
+.error-msg{color:var(--lose);font-size:.85rem;text-align:center;min-height:20px}
+
+/* Animations */
+@keyframes timerPulse{from{transform:scale(1)}to{transform:scale(1.06)}}
+@keyframes pop{0%{transform:scale(0.6);opacity:0}70%{transform:scale(1.05)}100%{transform:scale(1);opacity:1}}
+@keyframes taggedAnim{0%{font-size:0;opacity:0}30%{font-size:2rem;opacity:1}70%{font-size:2rem;opacity:1}100%{font-size:2.5rem;opacity:0}}
+
+/* Tagged label on canvas */
+.tagged-label{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:2rem;font-weight:900;color:var(--lose);pointer-events:none;text-shadow:0 0 20px rgba(255,23,68,.8);animation:taggedAnim 1.2s ease forwards;z-index:60}
+
+@media(max-width:600px){
+  h1{font-size:1.8rem}
+  .round-end-card{padding:24px 20px}
+}
+</style>
+</head>
+<body>
+<h1><span>Tag!</span> <span style="font-size:1.2rem;color:var(--muted)">Hot Potato</span></h1>
+<p class="subtitle">Be "It" when the timer hits zero and you're eliminated. Last one standing wins.</p>
+
+<div class="container">
+
+<!-- MAIN MENU -->
+<div id="menuScreen" class="screen">
+  <div class="card">
+    <div class="card-title">Your Name</div>
+    <input type="text" id="playerName" class="field-input" placeholder="Enter your name" value="Player" maxlength="14" style="width:100%">
+  </div>
+
+  <div class="mode-toggle">
+    <button class="mode-btn active" id="modeSolo" onclick="setMode('solo')">Solo vs Bots</button>
+    <button class="mode-btn" id="modeOnline" onclick="setMode('online')">Online (with friends)</button>
+  </div>
+
+  <!-- Solo Setup -->
+  <div id="soloSetup" class="card">
+    <div class="card-title">Match Setup</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="field-row">
+        <span class="field-label">Bots</span>
+        <select id="botCount" class="field-input">
+          <option value="0">0 (just you)</option>
+          <option value="1">1 bot</option>
+          <option value="2">2 bots</option>
+          <option value="3" selected>3 bots</option>
+          <option value="4">4 bots</option>
+          <option value="5">5 bots</option>
+        </select>
+      </div>
+      <div class="field-row">
+        <span class="field-label">Difficulty</span>
+        <select id="botDifficulty" class="field-input">
+          <option value="easy">Easy</option>
+          <option value="medium" selected>Medium</option>
+          <option value="hard">Hard</option>
+        </select>
+      </div>
+      <div class="field-row">
+        <span class="field-label">Round length</span>
+        <select id="roundTime" class="field-input">
+          <option value="15">15 seconds</option>
+          <option value="20" selected>20 seconds</option>
+          <option value="30">30 seconds</option>
+        </select>
+      </div>
+      <div style="font-size:.75rem;color:var(--muted);line-height:1.5;padding:0 2px">
+        Whoever is "It" when the round ends is eliminated. Last player standing wins.
+      </div>
+      <button class="btn btn-primary" style="margin-top:6px;width:100%" onclick="startSoloGame()">Start Game</button>
+    </div>
+  </div>
+
+  <!-- Online Setup -->
+  <div id="onlineSetup" class="card hidden">
+    <div class="card-title">Online Multiplayer</div>
+    <div class="lobby-section">
+      <div class="lobby-row">
+        <button class="btn btn-primary" style="flex:1" onclick="createRoom()">Create Room</button>
+        <button class="btn btn-secondary" style="flex:1" onclick="showJoinRoom()">Join Room</button>
+      </div>
+      <div id="joinRoomRow" class="lobby-row hidden">
+        <input type="text" id="joinCode" class="lobby-input" placeholder="Enter 6-char room code" maxlength="6" style="text-transform:uppercase;letter-spacing:2px">
+        <button class="btn btn-primary" onclick="joinRoom()">Join</button>
+      </div>
+      <div class="error-msg" id="onlineError"></div>
+      <div class="lobby-status" id="lobbyStatus">Enter your name above, then create or join a room.</div>
+    </div>
+  </div>
+</div>
+
+<!-- LOBBY SCREEN -->
+<div id="lobbyScreen" class="screen hidden">
+  <div class="card">
+    <div class="card-title">Room Code — click to copy</div>
+    <div class="room-code-display" id="roomCodeDisplay" onclick="copyRoomCode()">------</div>
+    <div class="copied-toast" id="copiedToast"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Players in Lobby</div>
+    <div class="lobby-players" id="lobbyPlayersList"></div>
+    <div class="lobby-status" id="lobbyWaitStatus">Waiting for players...</div>
+  </div>
+  <div id="hostControls" class="card hidden">
+    <div class="card-title">Host Controls</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="field-row">
+        <span class="field-label">Add Bots</span>
+        <select id="lobbyBotCount" class="field-input">
+          <option value="0">0 bots</option>
+          <option value="1">1 bot</option>
+          <option value="2">2 bots</option>
+          <option value="3">3 bots</option>
+        </select>
+      </div>
+      <div class="field-row">
+        <span class="field-label">Difficulty</span>
+        <select id="lobbyBotDiff" class="field-input">
+          <option value="easy">Easy</option>
+          <option value="medium" selected>Medium</option>
+          <option value="hard">Hard</option>
+        </select>
+      </div>
+      <div class="field-row">
+        <span class="field-label">Round length</span>
+        <select id="lobbyRoundTime" class="field-input">
+          <option value="15">15 seconds</option>
+          <option value="20" selected>20 seconds</option>
+          <option value="30">30 seconds</option>
+        </select>
+      </div>
+      <button class="btn btn-success" style="width:100%" onclick="hostStartGame()">Start Game</button>
+    </div>
+  </div>
+  <button class="btn btn-secondary" onclick="leaveLobby()">Leave Lobby</button>
+</div>
+
+<!-- GAME AREA -->
+<div id="gameWrapper">
+  <div id="hud">
+    <div class="hud-timer" id="timerDisplay">0:20</div>
+    <div class="hud-info" id="hudInfo"></div>
+    <button class="btn btn-secondary btn-small" onclick="goToMenu()" style="margin-left:auto" title="Quit to menu (Esc)">✕ Quit</button>
+  </div>
+  <canvas id="gameCanvas"></canvas>
+  <div id="statusMsg"></div>
+  <div id="elimPanel"></div>
+</div>
+
+<!-- ELIMINATION FLASH -->
+<div id="elimFlash">
+  <div class="elim-banner" id="elimBannerText">ELIMINATED</div>
+  <div class="elim-sub" id="elimSubText"></div>
+</div>
+
+<!-- FINAL RESULTS -->
+<div id="roundEnd">
+  <div class="round-end-card">
+    <h2 id="resultHeading">Winner!</h2>
+    <div class="leaderboard" id="leaderboard"></div>
+    <button class="btn btn-primary" style="width:100%;margin-top:6px" onclick="playAgain()">Play Again</button>
+    <button class="btn btn-secondary" style="width:100%;margin-top:8px" onclick="goToMenu()">Main Menu</button>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<div id="tagFlash"></div>
+
+<script>
+// ─── Constants ───────────────────────────────────────────────────────────────
+const CANVAS_W = 900;
+const CANVAS_H = 600;
+const PLAYER_RADIUS = 16;
+const IT_SPEED_BONUS = 1.1;
+const TAG_COOLDOWN = 1.5;
+const NETWORK_TICK = 1/20;
+const ELIM_FLASH_DURATION = 1.8;   // seconds the "ELIMINATED" banner shows
+const BETWEEN_ROUND_DELAY = 0.5;   // seconds between elim flash clearing and new round
+
+const CHARACTER_ROSTER = [
+  {name:'Sponge',  color:'#f5c842'},
+  {name:'Crab',    color:'#e8392a'},
+  {name:'Star',    color:'#f06fa4'},
+  {name:'Plankton',color:'#6abf47'},
+  {name:'Squid',   color:'#4eccc4'},
+  {name:'Hamster', color:'#c8936a'},
+];
+const BOT_NAMES = CHARACTER_ROSTER.map(c=>c.name);
+const PLAYER_COLORS = CHARACTER_ROSTER.map(c=>c.color);
+
+const OBSTACLES = [
+  {x:180,y:120,w:80,h:120},
+  {x:640,y:100,w:100,h:80},
+  {x:380,y:220,w:140,h:30},
+  {x:120,y:360,w:120,h:40},
+  {x:660,y:350,w:80,h:130},
+  {x:350,y:460,w:60,h:80},
+  {x:500,y:140,w:30,h:100},
+];
+
+// ─── State ───────────────────────────────────────────────────────────────────
+let gameMode = 'solo';
+let gameState = 'menu'; // 'menu' | 'lobby' | 'playing' | 'between' | 'gameover'
+let players = [];
+let eliminated = []; // [{id, name, color, roundEliminated}] — earliest eliminated is last in results
+let localPlayerId = null;
+let localSpectating = false; // true when local human has been eliminated
+let itPlayerId = null;
+let prevItId = null;
+let tagCooldownTimer = 0;
+let roundDuration = 20;
+let roundTimer = 0;
+let currentRound = 1;
+let frameShake = 0;
+let lastTime = 0;
+let rafId = null;
+let botDifficulty = 'medium';
+
+// Between-round state
+let betweenTimer = 0;
+let pendingElimId = null; // player eliminated this round, shown in flash
+
+// Network
+let peer = null;
+let connections = [];
+let roomCode = '';
+let isHost = false;
+let networkTick = 0;
+let pendingInputs = {};
+
+// Input
+const keys = {};
+let localDx = 0, localDy = 0;
+
+// Canvas
+let canvas, ctx;
+let dpr = 1;
+let scaleX = 1, scaleY = 1;
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function rand(min,max){return Math.random()*(max-min)+min}
+function randInt(min,max){return Math.floor(rand(min,max+1))}
+function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v))}
+function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
+function genId(len=6){const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let s='';for(let i=0;i<len;i++)s+=c[randInt(0,c.length-1)];return s}
+
+function safeSpawn(){
+  for(let attempt=0;attempt<200;attempt++){
+    const x=rand(PLAYER_RADIUS+10,CANVAS_W-PLAYER_RADIUS-10);
+    const y=rand(PLAYER_RADIUS+10,CANVAS_H-PLAYER_RADIUS-10);
+    if(!collidesObstacle(x,y,PLAYER_RADIUS+4)) return {x,y};
+  }
+  return {x:CANVAS_W/2,y:CANVAS_H/2};
+}
+
+function collidesObstacle(px,py,r){
+  for(const o of OBSTACLES){
+    const cx=clamp(px,o.x,o.x+o.w);
+    const cy=clamp(py,o.y,o.y+o.h);
+    if(Math.hypot(px-cx,py-cy)<r) return true;
+  }
+  return false;
+}
+
+// ─── Mode UI ─────────────────────────────────────────────────────────────────
+function setMode(m){
+  gameMode = m;
+  document.getElementById('modeSolo').classList.toggle('active', m==='solo');
+  document.getElementById('modeOnline').classList.toggle('active', m==='online');
+  document.getElementById('soloSetup').classList.toggle('hidden', m!=='solo');
+  document.getElementById('onlineSetup').classList.toggle('hidden', m!=='online');
+}
+
+// ─── Player factory ──────────────────────────────────────────────────────────
+function makePlayer(id, name, isBot, colorIdx, charIdx){
+  const {x,y}=safeSpawn();
+  const diff = botDifficulty;
+  let speed = 160;
+  if(isBot){
+    if(diff==='easy') speed=130;
+    else if(diff==='medium') speed=155;
+    else speed=175;
+  }
+  const ci = (charIdx !== undefined) ? charIdx : (colorIdx % CHARACTER_ROSTER.length);
+  return {
+    id, name, isBot,
+    x, y, vx:0, vy:0,
+    speed,
+    charIdx: ci,
+    color: CHARACTER_ROSTER[ci].color,
+    isIt: false,
+    reactionTimer: 0,
+    targetX: x, targetY: y,
+    botDir: {x:0,y:0},
+    facingDx: 0, facingDy: 0,
+  };
+}
+
+// ─── Solo Game Start ──────────────────────────────────────────────────────────
+function startSoloGame(){
+  const name = document.getElementById('playerName').value.trim() || 'Player';
+  const numBots = parseInt(document.getElementById('botCount').value);
+  botDifficulty = document.getElementById('botDifficulty').value;
+  roundDuration = parseInt(document.getElementById('roundTime').value);
+  gameMode = 'solo';
+  isHost = true;
+
+  players = [];
+  eliminated = [];
+  currentRound = 1;
+  localSpectating = false;
+
+  // Shuffle character roster so every player gets a unique character
+  const charOrder = [...Array(CHARACTER_ROSTER.length).keys()].sort(()=>Math.random()-.5);
+  const playerCharIdx = charOrder[0];
+  players.push(makePlayer('local', name, false, 0, playerCharIdx));
+  localPlayerId = 'local';
+
+  for(let i=0;i<numBots;i++){
+    const ci = charOrder[(i+1) % CHARACTER_ROSTER.length];
+    const charName = CHARACTER_ROSTER[ci].name;
+    players.push(makePlayer('bot'+i, charName, true, i+1, ci));
+  }
+
+  const itIdx = randInt(0, players.length-1);
+  setIt(players[itIdx].id, null);
+
+  initGame();
+}
+
+function setIt(newItId, fromId){
+  prevItId = itPlayerId;
+  itPlayerId = newItId;
+  tagCooldownTimer = fromId ? TAG_COOLDOWN : 0;
+  players.forEach(p=>{
+    p.isIt = (p.id === newItId);
+  });
+}
+
+// ─── Game Init ───────────────────────────────────────────────────────────────
+function initGame(){
+  gameState = 'playing';
+  roundTimer = roundDuration;
+  frameShake = 0;
+  betweenTimer = 0;
+  pendingElimId = null;
+  document.getElementById('statusMsg').textContent = '';
+
+  document.getElementById('menuScreen').classList.add('hidden');
+  document.getElementById('lobbyScreen').classList.add('hidden');
+  document.getElementById('gameWrapper').classList.add('active');
+  document.getElementById('roundEnd').classList.remove('active');
+  document.getElementById('elimFlash').classList.remove('active');
+
+  setupCanvas();
+  updateHUD();
+
+  if(rafId) cancelAnimationFrame(rafId);
+  lastTime = performance.now();
+  rafId = requestAnimationFrame(gameLoop);
+}
+
+function setupCanvas(){
+  canvas = document.getElementById('gameCanvas');
+  ctx = canvas.getContext('2d');
+  dpr = window.devicePixelRatio || 1;
+
+  const wrapper = document.getElementById('gameWrapper');
+  const availW = Math.min(wrapper.clientWidth || window.innerWidth - 40, CANVAS_W);
+  scaleX = availW / CANVAS_W;
+  scaleY = scaleX;
+  const cssW = CANVAS_W * scaleX;
+  const cssH = CANVAS_H * scaleY;
+
+  canvas.style.width = cssW + 'px';
+  canvas.style.height = cssH + 'px';
+  canvas.style.maxWidth = 'none';
+  canvas.width = Math.round(cssW * dpr);
+  canvas.height = Math.round(cssH * dpr);
+  ctx.scale(dpr * scaleX, dpr * scaleY);
+}
+
+// ─── Game Loop ────────────────────────────────────────────────────────────────
+function gameLoop(now){
+  if(gameState !== 'playing' && gameState !== 'between') return;
+  rafId = requestAnimationFrame(gameLoop);
+
+  let dt = (now - lastTime) / 1000;
+  lastTime = now;
+  dt = Math.min(dt, 0.05);
+
+  if(gameState === 'between'){
+    updateBetween(dt);
+  } else {
+    update(dt);
+  }
+  render();
+}
+
+// ─── Between-round update ─────────────────────────────────────────────────────
+function updateBetween(dt){
+  betweenTimer -= dt;
+  if(betweenTimer <= 0){
+    document.getElementById('elimFlash').classList.remove('active');
+    startNextRound();
+  }
+}
+
+// ─── Per-round start (after first initGame) ───────────────────────────────────
+function startNextRound(){
+  // Check if game is over (1 player left)
+  if(players.length <= 1){
+    endGame();
+    return;
+  }
+
+  currentRound++;
+  roundTimer = roundDuration;
+  gameState = 'playing';
+
+  // Reposition survivors
+  players.forEach(p=>{const sp=safeSpawn();p.x=sp.x;p.y=sp.y;});
+
+  // Random new "It" from survivors
+  const itIdx = randInt(0, players.length-1);
+  setIt(players[itIdx].id, null);
+
+  document.getElementById('statusMsg').textContent = '';
+  updateHUD();
+
+  if(gameMode === 'host'){
+    broadcastRoundStart();
+  }
+}
+
+// ─── Main Update ─────────────────────────────────────────────────────────────
+function update(dt){
+  roundTimer -= dt;
+
+  if(roundTimer <= 0){
+    roundTimer = 0;
+    eliminateIt();
+    return;
+  }
+
+  if(tagCooldownTimer > 0) tagCooldownTimer -= dt;
+
+  if(gameMode === 'client'){
+    if(!localSpectating){
+      readLocalInput();
+      sendInputToHost();
+    }
+  } else {
+    if(!localSpectating){
+      readLocalInput();
+      const lp = getPlayer(localPlayerId);
+      if(lp){ lp._inputDx = localDx; lp._inputDy = localDy; }
+    }
+    Object.entries(pendingInputs).forEach(([pid,inp])=>{
+      const p = getPlayer(pid);
+      if(p){ p._inputDx=inp.dx; p._inputDy=inp.dy; }
+    });
+
+    updateBots(dt);
+    movePlayers(dt);
+    checkTags();
+
+    if(gameMode === 'host'){
+      networkTick += dt;
+      if(networkTick >= NETWORK_TICK){
+        networkTick = 0;
+        broadcastState();
+      }
+    }
+  }
+
+  if(frameShake > 0) frameShake = Math.max(0, frameShake - dt * 8);
+
+  updateHUD();
+}
+
+function readLocalInput(){
+  localDx = 0; localDy = 0;
+  if(keys['w']||keys['arrowup']) localDy -= 1;
+  if(keys['s']||keys['arrowdown']) localDy += 1;
+  if(keys['a']||keys['arrowleft']) localDx -= 1;
+  if(keys['d']||keys['arrowright']) localDx += 1;
+  const len = Math.hypot(localDx, localDy);
+  if(len > 0){localDx/=len;localDy/=len;}
+}
+
+// ─── Elimination ─────────────────────────────────────────────────────────────
+function eliminateIt(){
+  if(gameMode === 'client') return; // host drives elimination
+
+  const itPlayer = getPlayer(itPlayerId);
+  if(!itPlayer) { checkGameOver(); return; }
+
+  // Record elimination
+  eliminated.push({id:itPlayer.id, name:itPlayer.name, color:itPlayer.color, charIdx:itPlayer.charIdx, round:currentRound});
+  pendingElimId = itPlayer.id;
+
+  // Check if local player was eliminated
+  if(itPlayer.id === localPlayerId){
+    localSpectating = true;
+  }
+
+  // Remove from active players
+  players = players.filter(p=>p.id !== itPlayer.id);
+
+  if(gameMode === 'host'){
+    broadcastElimination(itPlayer.id);
+  }
+
+  // Only one left (or zero) → game over
+  if(players.length <= 1){
+    showElimFlash(itPlayer.name, ()=>endGame());
+    return;
+  }
+
+  // Show flash, then start next round
+  gameState = 'between';
+  showElimFlash(itPlayer.name, null);
+  betweenTimer = ELIM_FLASH_DURATION + BETWEEN_ROUND_DELAY;
+  updateElimPanel();
+}
+
+function showElimFlash(playerName, callback){
+  const bannerEl = document.getElementById('elimBannerText');
+  const subEl = document.getElementById('elimSubText');
+  bannerEl.textContent = `ELIMINATED: ${playerName}`;
+  bannerEl.className = 'elim-banner';
+  subEl.textContent = players.length > 1
+    ? `${players.length} players remain — Round ${currentRound + 1} starting...`
+    : '';
+  document.getElementById('elimFlash').classList.add('active');
+
+  if(callback){
+    setTimeout(()=>{
+      document.getElementById('elimFlash').classList.remove('active');
+      callback();
+    }, Math.round((ELIM_FLASH_DURATION + BETWEEN_ROUND_DELAY) * 1000));
+  }
+}
+
+function checkGameOver(){
+  if(players.length <= 1) endGame();
+}
+
+// ─── Game Over ────────────────────────────────────────────────────────────────
+function endGame(){
+  gameState = 'gameover';
+  if(rafId){cancelAnimationFrame(rafId);rafId=null;}
+  document.getElementById('elimFlash').classList.remove('active');
+
+  // Build final results: survivor is #1, then eliminated in reverse order (last eliminated = #2)
+  const results = [];
+  if(players.length >= 1){
+    results.push({name:players[0].name, color:players[0].color, survived:true});
+  }
+  // eliminated is in order first→last. Reverse so last eliminated = rank 2
+  for(let i=eliminated.length-1;i>=0;i--){
+    results.push({name:eliminated[i].name, color:eliminated[i].color, survived:false, round:eliminated[i].round});
+  }
+
+  const isLocalSurvivor = players.length >= 1 && players[0].id === localPlayerId;
+  const heading = document.getElementById('resultHeading');
+  if(isLocalSurvivor){
+    heading.textContent = 'You survived!';
+    heading.className = '';
+  } else if(localSpectating){
+    heading.textContent = `${results[0]?.name || 'Someone'} wins!`;
+    heading.className = '';
+  } else {
+    heading.textContent = `${results[0]?.name || 'Someone'} wins!`;
+    heading.className = '';
+  }
+
+  const lb = document.getElementById('leaderboard');
+  lb.innerHTML = results.map((r,i)=>`
+    <div class="lb-row ${i===0?'first':''}">
+      <div class="lb-rank ${i===0?'gold':''}">${i===0?'#1':'#'+(i+1)}</div>
+      <div style="flex:1;text-align:left">
+        <div class="lb-name" style="color:${r.color}">${r.name}</div>
+        ${r.survived
+          ? '<div class="lb-detail">Survivor</div>'
+          : `<div class="lb-detail">Eliminated round ${r.round}</div>`}
+      </div>
+      <div class="${r.survived?'lb-badge':'lb-badge elim'}">${r.survived?'WINNER':'ELIMINATED'}</div>
+    </div>
+  `).join('');
+
+  document.getElementById('roundEnd').classList.add('active');
+
+  if(gameMode === 'host') broadcastGameOver(results);
+}
+
+// ─── Eliminated side panel ────────────────────────────────────────────────────
+function updateElimPanel(){
+  const panel = document.getElementById('elimPanel');
+  if(eliminated.length === 0){panel.innerHTML='';return;}
+  panel.innerHTML = `<div class="elim-panel-title">Eliminated</div>` +
+    eliminated.map((e,i)=>`
+      <div class="elim-entry">
+        <span class="elim-order">${i+1}</span>
+        <canvas class="elim-char-icon" data-charidx="${e.charIdx??0}" width="20" height="20" style="width:20px;height:20px;flex-shrink:0;opacity:.6;vertical-align:middle"></canvas>
+        <span>${e.name}</span>
+        <span style="margin-left:auto;font-size:.72rem">Round ${e.round}</span>
+      </div>
+    `).join('');
+  // Draw mini sprites into the icon canvases
+  panel.querySelectorAll('.elim-char-icon').forEach(c=>{
+    const cx = c.getContext('2d');
+    const ci = parseInt(c.dataset.charidx)||0;
+    cx.scale(1,1);
+    drawCharacter(cx, 10, 10, 8, 0, 0, false, ci);
+  });
+}
+
+// ─── Bot AI ──────────────────────────────────────────────────────────────────
+function pickClearDir(px, py, preferDx, preferDy){
+  const ahead = 50;
+  const len0 = Math.hypot(preferDx, preferDy);
+  const pdx = len0 > 0 ? preferDx/len0 : 1;
+  const pdy = len0 > 0 ? preferDy/len0 : 0;
+  const candidates = [
+    [pdx, pdy],
+    [-pdy, pdx], [pdy, -pdx],
+    [pdx*0.7-pdy*0.7, pdy*0.7+pdx*0.7],
+    [pdx*0.7+pdy*0.7, pdy*0.7-pdx*0.7],
+    [-pdx, -pdy],
+  ];
+  for(const [dx,dy] of candidates){
+    const l=Math.hypot(dx,dy);if(l===0)continue;
+    const ndx=dx/l,ndy=dy/l;
+    const tx=px+ndx*ahead,ty=py+ndy*ahead;
+    if(!collidesObstacle(tx,ty,PLAYER_RADIUS+8)&&tx>20&&tx<CANVAS_W-20&&ty>20&&ty<CANVAS_H-20){
+      return {x:ndx,y:ndy};
+    }
+  }
+  const a=Math.random()*Math.PI*2;
+  return {x:Math.cos(a),y:Math.sin(a)};
+}
+
+function updateBots(dt){
+  const itPlayer = getPlayer(itPlayerId);
+  players.forEach(p=>{
+    if(!p.isBot) return;
+    const diff = botDifficulty;
+    const reactionDelay = diff==='easy'?0.3:diff==='medium'?0.15:0.05;
+    p.reactionTimer -= dt;
+
+    if(!p._stuckTimer) p._stuckTimer = 0;
+    if(!p._lastX) p._lastX = p.x;
+    const movedDist = Math.hypot(p.x - p._lastX, p.y - (p._lastY||p.y));
+    p._lastX = p.x; p._lastY = p.y;
+    if(movedDist < 0.5) p._stuckTimer += dt; else p._stuckTimer = 0;
+    const isStuck = p._stuckTimer > 0.25;
+
+    if(p.reactionTimer > 0 && !isStuck) return;
+    p.reactionTimer = reactionDelay + rand(0, reactionDelay);
+    if(isStuck) p._stuckTimer = 0;
+
+    if(p.isIt){
+      let nearest = null, nearDist = Infinity;
+      players.forEach(t=>{
+        if(t.id===p.id) return;
+        const d = dist(p,t);
+        if(d<nearDist){nearDist=d;nearest=t;}
+      });
+      if(nearest){
+        let pdx = nearest.x - p.x;
+        let pdy = nearest.y - p.y;
+        if(diff==='hard' && nearest._inputDx!==undefined){
+          pdx = (nearest.x + nearest._inputDx*40) - p.x;
+          pdy = (nearest.y + nearest._inputDy*40) - p.y;
+        }
+        p.botDir = pickClearDir(p.x, p.y, pdx, pdy);
+      }
+    } else {
+      if(!itPlayer){p.botDir={x:0,y:0};return;}
+      const fdx = p.x - itPlayer.x;
+      const fdy = p.y - itPlayer.y;
+      p.botDir = pickClearDir(p.x, p.y, fdx, fdy);
+    }
+    p._inputDx = p.botDir.x;
+    p._inputDy = p.botDir.y;
+  });
+}
+
+function movePlayers(dt){
+  players.forEach(p=>{
+    let dx = p._inputDx||0;
+    let dy = p._inputDy||0;
+    let spd = p.speed;
+    if(p.isIt) spd *= IT_SPEED_BONUS;
+
+    const nx = p.x + dx*spd*dt;
+    const ny = p.y + dy*spd*dt;
+
+    let fx = clamp(nx, PLAYER_RADIUS, CANVAS_W-PLAYER_RADIUS);
+    let fy = clamp(ny, PLAYER_RADIUS, CANVAS_H-PLAYER_RADIUS);
+
+    if(!collidesObstacle(fx, p.y, PLAYER_RADIUS)){
+      p.x = fx;
+    } else {
+      p.x = clamp(p.x, PLAYER_RADIUS, CANVAS_W-PLAYER_RADIUS);
+    }
+    if(!collidesObstacle(p.x, fy, PLAYER_RADIUS)){
+      p.y = fy;
+    } else {
+      p.y = clamp(p.y, PLAYER_RADIUS, CANVAS_H-PLAYER_RADIUS);
+    }
+
+    // Track facing direction for sprite rendering
+    const ml = Math.hypot(dx, dy);
+    if(ml > 0.1){ p.facingDx = dx/ml; p.facingDy = dy/ml; }
+  });
+}
+
+function checkTags(){
+  const itPlayer = getPlayer(itPlayerId);
+  if(!itPlayer) return;
+  players.forEach(p=>{
+    if(p.id === itPlayerId) return;
+    if(p.id === prevItId && tagCooldownTimer > 0) return;
+    if(dist(itPlayer,p) < PLAYER_RADIUS*1.9){
+      doTag(p.id);
+    }
+  });
+}
+
+function doTag(newItId){
+  setIt(newItId, itPlayerId);
+  frameShake = 0.35;
+  showTagFlash();
+  showTaggedLabel();
+  if(gameMode === 'host') broadcastTag(newItId);
+}
+
+function showTagFlash(){
+  const el = document.getElementById('tagFlash');
+  el.style.opacity = '1';
+  setTimeout(()=>el.style.opacity='0', 150);
+}
+
+function showTaggedLabel(){
+  const old = document.querySelector('.tagged-label');
+  if(old) old.remove();
+  const el = document.createElement('div');
+  el.className = 'tagged-label';
+  el.textContent = 'TAGGED!';
+  document.getElementById('gameWrapper').appendChild(el);
+  setTimeout(()=>el.remove(), 1200);
+}
+
+// ─── Render ──────────────────────────────────────────────────────────────────
+function render(){
+  if(!ctx) return;
+  ctx.save();
+
+  if(frameShake > 0){
+    const s = frameShake * 10;
+    ctx.translate(rand(-s,s), rand(-s,s));
+  }
+
+  ctx.fillStyle = '#0d0d1a';
+  ctx.fillRect(0,0,CANVAS_W,CANVAS_H);
+
+  ctx.strokeStyle = '#2a2a40';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(1,1,CANVAS_W-2,CANVAS_H-2);
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+  ctx.lineWidth = 1;
+  for(let x=0;x<CANVAS_W;x+=60){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,CANVAS_H);ctx.stroke();}
+  for(let y=0;y<CANVAS_H;y+=60){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(CANVAS_W,y);ctx.stroke();}
+
+  OBSTACLES.forEach(o=>{
+    ctx.fillStyle = '#1e1e35';
+    ctx.strokeStyle = '#3a3a5a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(o.x,o.y,o.w,o.h,6);
+    ctx.fill();
+    ctx.stroke();
+  });
+
+  // Draw timer warning overlay when under 5s
+  if(roundTimer <= 5 && gameState === 'playing'){
+    const alpha = (1 - roundTimer/5) * 0.12 * (Math.sin(performance.now()/120)+1);
+    ctx.fillStyle = `rgba(233,69,96,${alpha})`;
+    ctx.fillRect(0,0,CANVAS_W,CANVAS_H);
+  }
+
+  players.forEach(p=>drawPlayer(p));
+
+  // Spectator mode overlay hint
+  if(localSpectating && gameState === 'playing'){
+    ctx.font = 'bold 14px Segoe UI,sans-serif';
+    ctx.fillStyle = 'rgba(255,214,0,0.7)';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText('SPECTATING', CANVAS_W/2, 10);
+  }
+
+  ctx.restore();
+}
+
+// ─── Character drawing ────────────────────────────────────────────────────────
+
+function drawCharacter(c, x, y, r, fdx, fdy, isIt, charIdx){
+  switch(charIdx % 6){
+    case 0: drawSponge(c,x,y,r,fdx,fdy,isIt); break;
+    case 1: drawCrab(c,x,y,r,fdx,fdy,isIt); break;
+    case 2: drawStar(c,x,y,r,fdx,fdy,isIt); break;
+    case 3: drawPlankton(c,x,y,r,fdx,fdy,isIt); break;
+    case 4: drawSquid(c,x,y,r,fdx,fdy,isIt); break;
+    case 5: drawHamster(c,x,y,r,fdx,fdy,isIt); break;
+  }
+}
+
+// Sponge: yellow rounded-square body, big eyes with touching pupils, belt, stick limbs, pink cheeks
+function drawSponge(c,x,y,r,fdx,fdy,isIt){
+  const s=r*1.1;
+  // shadow
+  c.fillStyle='rgba(0,0,0,0.3)';
+  c.beginPath();c.ellipse(x+2,y+r*0.9,r*0.8,r*0.35,0,0,Math.PI*2);c.fill();
+  // legs
+  c.strokeStyle='#333';c.lineWidth=r*0.18;c.lineCap='round';
+  c.beginPath();c.moveTo(x-r*0.35,y+r*0.72);c.lineTo(x-r*0.45,y+r+r*0.55);c.stroke();
+  c.beginPath();c.moveTo(x+r*0.35,y+r*0.72);c.lineTo(x+r*0.45,y+r+r*0.55);c.stroke();
+  // arms
+  c.beginPath();c.moveTo(x-s*0.7,y-r*0.1);c.lineTo(x-s*1.25,y+r*0.4);c.stroke();
+  c.beginPath();c.moveTo(x+s*0.7,y-r*0.1);c.lineTo(x+s*1.25,y+r*0.4);c.stroke();
+  // body (rounded square)
+  c.fillStyle=isIt?'#ff9930':'#f5c842';
+  c.strokeStyle=isIt?'#ff1744':'#c49a10';
+  c.lineWidth=isIt?2.5:1.5;
+  c.beginPath();
+  c.roundRect(x-s,y-r,s*2,r*2,r*0.35);
+  c.fill();c.stroke();
+  // belt band
+  const beltY=y+r*0.22;
+  c.fillStyle='#6b3a1f';
+  c.fillRect(x-s,beltY,s*2,r*0.42);
+  // buckle
+  c.fillStyle='#c8a020';
+  c.fillRect(x-r*0.2,beltY+r*0.05,r*0.4,r*0.3);
+  // pink cheeks
+  c.fillStyle='rgba(255,160,160,0.55)';
+  c.beginPath();c.ellipse(x-r*0.6,y,r*0.28,r*0.2,0,0,Math.PI*2);c.fill();
+  c.beginPath();c.ellipse(x+r*0.6,y,r*0.28,r*0.2,0,0,Math.PI*2);c.fill();
+  // eyes (two big circles whose pupils touch at center)
+  const eyeR=r*0.34;
+  const eyeOffY=y-r*0.18;
+  const eyeLX=x-eyeR*0.85, eyeRX=x+eyeR*0.85;
+  c.fillStyle='#fff';
+  c.strokeStyle='#333';c.lineWidth=1;
+  c.beginPath();c.arc(eyeLX,eyeOffY,eyeR,0,Math.PI*2);c.fill();c.stroke();
+  c.beginPath();c.arc(eyeRX,eyeOffY,eyeR,0,Math.PI*2);c.fill();c.stroke();
+  // pupils touch at center x
+  const ex=fdx*r*0.08, ey=fdy*r*0.08;
+  c.fillStyle='#111';
+  c.beginPath();c.arc(eyeLX+eyeR*0.55+ex,eyeOffY+ey,eyeR*0.45,0,Math.PI*2);c.fill();
+  c.beginPath();c.arc(eyeRX-eyeR*0.55+ex,eyeOffY+ey,eyeR*0.45,0,Math.PI*2);c.fill();
+  // mouth
+  c.strokeStyle='#333';c.lineWidth=r*0.12;
+  c.beginPath();c.arc(x,y+r*0.25,r*0.22,0.15,Math.PI-0.15);c.stroke();
+}
+
+// Crab: red dome body, tall eye-stalks, polka dots, stick legs
+function drawCrab(c,x,y,r,fdx,fdy,isIt){
+  // shadow
+  c.fillStyle='rgba(0,0,0,0.3)';
+  c.beginPath();c.ellipse(x+2,y+r*0.7,r*0.85,r*0.3,0,0,Math.PI*2);c.fill();
+  // legs (3 pairs)
+  c.strokeStyle='#333';c.lineWidth=r*0.16;c.lineCap='round';
+  const legOffsets=[[-0.65,0.7],[-0.35,0.85],[0.35,0.85],[0.65,0.7]];
+  for(const [lx,ly] of legOffsets){
+    c.beginPath();c.moveTo(x+r*lx,y+r*(ly-0.3));c.lineTo(x+r*lx*1.6,y+r*ly+r*0.5);c.stroke();
+  }
+  // claws (just thicker stubs)
+  c.lineWidth=r*0.2;
+  c.beginPath();c.moveTo(x-r*0.8,y+r*0.1);c.lineTo(x-r*1.45,y-r*0.3);c.stroke();
+  c.beginPath();c.moveTo(x+r*0.8,y+r*0.1);c.lineTo(x+r*1.45,y-r*0.3);c.stroke();
+  // body (dome)
+  c.fillStyle=isIt?'#ff5533':'#e8392a';
+  c.strokeStyle=isIt?'#ff1744':'#a0200f';
+  c.lineWidth=isIt?2.5:1.5;
+  c.beginPath();
+  c.arc(x,y,r*1.0,Math.PI,0);
+  c.lineTo(x+r,y+r*0.5);
+  c.arc(x,y+r*0.5,r,0,Math.PI);
+  c.closePath();
+  c.fill();c.stroke();
+  // polka dots on body
+  c.fillStyle='rgba(255,160,160,0.5)';
+  for(const [px,py] of [[-0.45,-0.3],[0.45,-0.3],[0,-0.55],[0.25,0.1],[-0.25,0.1]]){
+    c.beginPath();c.arc(x+r*px,y+r*py,r*0.13,0,Math.PI*2);c.fill();
+  }
+  // eye stalks
+  const stalkH=r*0.9;
+  const stalkW=r*0.12;
+  c.fillStyle='#a01808';
+  c.fillRect(x-r*0.38-stalkW/2,y-r-stalkH,stalkW,stalkH);
+  c.fillRect(x+r*0.38-stalkW/2,y-r-stalkH,stalkW,stalkH);
+  // eyeball at top of stalks
+  const stalkTopY=y-r-stalkH;
+  const eyeR=r*0.24;
+  c.fillStyle='#fff';c.strokeStyle='#333';c.lineWidth=1;
+  c.beginPath();c.arc(x-r*0.38,stalkTopY,eyeR,0,Math.PI*2);c.fill();c.stroke();
+  c.beginPath();c.arc(x+r*0.38,stalkTopY,eyeR,0,Math.PI*2);c.fill();c.stroke();
+  const ex=fdx*eyeR*0.4, ey=fdy*eyeR*0.4;
+  c.fillStyle='#111';
+  c.beginPath();c.arc(x-r*0.38+ex,stalkTopY+ey,eyeR*0.5,0,Math.PI*2);c.fill();
+  c.beginPath();c.arc(x+r*0.38+ex,stalkTopY+ey,eyeR*0.5,0,Math.PI*2);c.fill();
+}
+
+// Star: pink rounded-pentagon body, big eyes, green shorts with purple dots, stick limbs
+function drawStar(c,x,y,r,fdx,fdy,isIt){
+  // shadow
+  c.fillStyle='rgba(0,0,0,0.3)';
+  c.beginPath();c.ellipse(x+2,y+r*0.9,r*0.75,r*0.3,0,0,Math.PI*2);c.fill();
+  // legs
+  c.strokeStyle='#333';c.lineWidth=r*0.17;c.lineCap='round';
+  c.beginPath();c.moveTo(x-r*0.3,y+r*0.8);c.lineTo(x-r*0.4,y+r*1.5);c.stroke();
+  c.beginPath();c.moveTo(x+r*0.3,y+r*0.8);c.lineTo(x+r*0.4,y+r*1.5);c.stroke();
+  // arms (starfish-like stubs)
+  c.lineWidth=r*0.2;
+  c.beginPath();c.moveTo(x-r*0.85,y-r*0.25);c.lineTo(x-r*1.4,y-r*0.6);c.stroke();
+  c.beginPath();c.moveTo(x+r*0.85,y-r*0.25);c.lineTo(x+r*1.4,y-r*0.6);c.stroke();
+  // body (rounded pentagon)
+  c.fillStyle=isIt?'#ff88bb':'#f06fa4';
+  c.strokeStyle=isIt?'#ff1744':'#c0407a';
+  c.lineWidth=isIt?2.5:1.5;
+  c.save();c.translate(x,y);
+  c.beginPath();
+  for(let i=0;i<5;i++){
+    const a=-Math.PI/2+i*Math.PI*2/5;
+    const rx=Math.cos(a)*r, ry=Math.sin(a)*r;
+    i===0?c.moveTo(rx,ry):c.lineTo(rx,ry);
+  }
+  c.closePath();
+  // use roundRect trick via quadratic curves
+  c.restore();
+  c.beginPath();
+  const pts=[];
+  for(let i=0;i<5;i++){const a=-Math.PI/2+i*Math.PI*2/5;pts.push([x+Math.cos(a)*r,y+Math.sin(a)*r]);}
+  c.moveTo((pts[0][0]+pts[4][0])/2,(pts[0][1]+pts[4][1])/2);
+  for(let i=0;i<5;i++){const n=(i+1)%5;c.quadraticCurveTo(pts[i][0],pts[i][1],(pts[i][0]+pts[n][0])/2,(pts[i][1]+pts[n][1])/2);}
+  c.closePath();c.fill();c.stroke();
+  // green shorts on lower half
+  c.fillStyle='#3db84a';
+  c.save();c.beginPath();
+  c.arc(x,y,r,0.1*Math.PI,0.9*Math.PI);
+  c.lineTo(x-r,y+r*0.2);
+  c.quadraticCurveTo(x,y+r*0.8,x+r,y+r*0.2);
+  c.closePath();c.fill();c.restore();
+  // purple polka dots on shorts
+  c.fillStyle='rgba(130,60,200,0.7)';
+  for(const [px,py] of [[-0.35,0.35],[0.35,0.35],[0,0.55],[-0.6,0.15],[0.6,0.15]]){
+    c.beginPath();c.arc(x+r*px,y+r*py,r*0.1,0,Math.PI*2);c.fill();
+  }
+  // eyes
+  const eyeR=r*0.3;
+  const eyeOffY=y-r*0.25;
+  c.fillStyle='#fff';c.strokeStyle='#333';c.lineWidth=1;
+  c.beginPath();c.arc(x-eyeR*0.85,eyeOffY,eyeR,0,Math.PI*2);c.fill();c.stroke();
+  c.beginPath();c.arc(x+eyeR*0.85,eyeOffY,eyeR,0,Math.PI*2);c.fill();c.stroke();
+  const ex=fdx*eyeR*0.35, ey=fdy*eyeR*0.35;
+  c.fillStyle='#111';
+  c.beginPath();c.arc(x-eyeR*0.85+ex,eyeOffY+ey,eyeR*0.5,0,Math.PI*2);c.fill();
+  c.beginPath();c.arc(x+eyeR*0.85+ex,eyeOffY+ey,eyeR*0.5,0,Math.PI*2);c.fill();
+}
+
+// Plankton: green oval, one big central eye, antennae, stick legs, pink spots
+function drawPlankton(c,x,y,r,fdx,fdy,isIt){
+  // shadow
+  c.fillStyle='rgba(0,0,0,0.3)';
+  c.beginPath();c.ellipse(x+2,y+r*0.8,r*0.65,r*0.25,0,0,Math.PI*2);c.fill();
+  // legs
+  c.strokeStyle='#333';c.lineWidth=r*0.17;c.lineCap='round';
+  c.beginPath();c.moveTo(x-r*0.25,y+r*0.7);c.lineTo(x-r*0.4,y+r*1.45);c.stroke();
+  c.beginPath();c.moveTo(x+r*0.25,y+r*0.7);c.lineTo(x+r*0.4,y+r*1.45);c.stroke();
+  // antennae
+  c.lineWidth=r*0.13;
+  c.beginPath();c.moveTo(x-r*0.2,y-r*0.75);c.lineTo(x-r*0.35,y-r*1.5);c.stroke();
+  c.beginPath();c.moveTo(x+r*0.2,y-r*0.75);c.lineTo(x+r*0.35,y-r*1.5);c.stroke();
+  // antennae tips
+  c.fillStyle='#6abf47';
+  c.beginPath();c.arc(x-r*0.35,y-r*1.5,r*0.1,0,Math.PI*2);c.fill();
+  c.beginPath();c.arc(x+r*0.35,y-r*1.5,r*0.1,0,Math.PI*2);c.fill();
+  // body (oval)
+  c.fillStyle=isIt?'#88e850':'#6abf47';
+  c.strokeStyle=isIt?'#ff1744':'#3a8020';
+  c.lineWidth=isIt?2.5:1.5;
+  c.beginPath();c.ellipse(x,y,r*0.85,r,0,0,Math.PI*2);c.fill();c.stroke();
+  // pink polka dots
+  c.fillStyle='rgba(255,160,160,0.55)';
+  for(const [px,py] of [[-0.5,0.1],[0.5,0.1],[0.1,0.5],[-0.4,-0.45],[0.4,-0.45]]){
+    c.beginPath();c.arc(x+r*px,y+r*py,r*0.11,0,Math.PI*2);c.fill();
+  }
+  // big single eye
+  const eyeR=r*0.42;
+  c.fillStyle='#fff';c.strokeStyle='#333';c.lineWidth=1.5;
+  c.beginPath();c.arc(x,y-r*0.12,eyeR,0,Math.PI*2);c.fill();c.stroke();
+  // yellow iris
+  const ex=fdx*eyeR*0.3, ey=fdy*eyeR*0.3;
+  c.fillStyle='#e8d030';
+  c.beginPath();c.arc(x+ex,y-r*0.12+ey,eyeR*0.68,0,Math.PI*2);c.fill();
+  // slit pupil
+  c.fillStyle='#111';
+  c.save();c.translate(x+ex,y-r*0.12+ey);c.rotate(Math.PI*0.08);
+  c.beginPath();c.ellipse(0,0,eyeR*0.18,eyeR*0.5,0,0,Math.PI*2);c.fill();c.restore();
+  // eyelid outline
+  c.strokeStyle='#333';c.lineWidth=1;
+  c.beginPath();c.arc(x,y-r*0.12,eyeR,0,Math.PI*2);c.stroke();
+  // smile
+  c.strokeStyle='#2a6010';c.lineWidth=r*0.13;
+  c.beginPath();c.arc(x,y+r*0.35,r*0.28,0.15,Math.PI-0.15);c.stroke();
+}
+
+// Squid: teal blob body, grumpy half-closed eyes, droopy nose, sailor hat
+function drawSquid(c,x,y,r,fdx,fdy,isIt){
+  // shadow
+  c.fillStyle='rgba(0,0,0,0.3)';
+  c.beginPath();c.ellipse(x+2,y+r*1.1,r*0.7,r*0.28,0,0,Math.PI*2);c.fill();
+  // tentacles
+  c.strokeStyle=isIt?'#3aa8a0':'#2a8880';
+  c.lineWidth=r*0.22;c.lineCap='round';
+  const tAngles=[-0.55,-0.2,0.2,0.55];
+  tAngles.forEach(a=>{
+    const tx=x+Math.sin(a)*r*0.6;
+    const ty=y+r*0.85;
+    c.beginPath();
+    c.moveTo(tx,ty);
+    c.quadraticCurveTo(tx+Math.sin(a)*r*0.5,ty+r*0.7,tx+Math.sin(a)*r*0.3,ty+r*1.1);
+    c.stroke();
+  });
+  // body (bulbous blob)
+  c.fillStyle=isIt?'#5ce8e0':'#4eccc4';
+  c.strokeStyle=isIt?'#ff1744':'#2a9090';
+  c.lineWidth=isIt?2.5:1.5;
+  c.beginPath();
+  c.ellipse(x,y-r*0.1,r*0.95,r*1.05,0,0,Math.PI*2);
+  c.fill();c.stroke();
+  // nose (drooping oval)
+  c.fillStyle='#f5a080';c.strokeStyle='#c06040';c.lineWidth=1;
+  c.beginPath();c.ellipse(x,y+r*0.25,r*0.12,r*0.32,0,0,Math.PI*2);c.fill();c.stroke();
+  // grumpy eyes (half-closed)
+  const eyeR=r*0.28;
+  const eyeOffY=y-r*0.2;
+  c.fillStyle='#fff';c.strokeStyle='#333';c.lineWidth=1;
+  c.beginPath();c.arc(x-eyeR*1.1,eyeOffY,eyeR,0,Math.PI*2);c.fill();c.stroke();
+  c.beginPath();c.arc(x+eyeR*1.1,eyeOffY,eyeR,0,Math.PI*2);c.fill();c.stroke();
+  const ex=fdx*eyeR*0.35, ey2=fdy*eyeR*0.35;
+  c.fillStyle='#111';
+  c.beginPath();c.arc(x-eyeR*1.1+ex,eyeOffY+ey2,eyeR*0.5,0,Math.PI*2);c.fill();
+  c.beginPath();c.arc(x+eyeR*1.1+ex,eyeOffY+ey2,eyeR*0.5,0,Math.PI*2);c.fill();
+  // eyelid droops (grumpy half-lid)
+  c.fillStyle=isIt?'#5ce8e0':'#4eccc4';
+  c.beginPath();c.arc(x-eyeR*1.1,eyeOffY-eyeR*0.1,eyeR*1.05,Math.PI,0);c.fill();
+  c.beginPath();c.arc(x+eyeR*1.1,eyeOffY-eyeR*0.1,eyeR*1.05,Math.PI,0);c.fill();
+  // sailor hat
+  const hatY=y-r-r*0.18;
+  // brim
+  c.fillStyle='#fff';c.strokeStyle='#ccc';c.lineWidth=1;
+  c.beginPath();c.ellipse(x,hatY,r*0.85,r*0.2,0,0,Math.PI*2);c.fill();c.stroke();
+  // hat body
+  c.fillStyle='#fff';c.strokeStyle='#aaa';c.lineWidth=1;
+  c.beginPath();
+  c.rect(x-r*0.55,hatY-r*0.55,r*1.1,r*0.58);
+  c.fill();c.stroke();
+  // hat band
+  c.fillStyle='#222266';
+  c.fillRect(x-r*0.55,hatY-r*0.18,r*1.1,r*0.16);
+  // anchor symbol on hat
+  c.strokeStyle='#222266';c.lineWidth=r*0.09;c.lineCap='round';
+  const hx=x,hy=hatY-r*0.38;
+  c.beginPath();c.moveTo(hx,hy-r*0.16);c.lineTo(hx,hy+r*0.16);c.stroke();
+  c.beginPath();c.arc(hx,hy-r*0.1,r*0.1,0,Math.PI*2);c.stroke();
+  c.beginPath();c.moveTo(hx-r*0.14,hy+r*0.16);c.quadraticCurveTo(hx-r*0.18,hy,hx-r*0.04,hy-r*0.04);c.stroke();
+  c.beginPath();c.moveTo(hx+r*0.14,hy+r*0.16);c.quadraticCurveTo(hx+r*0.18,hy,hx+r*0.04,hy-r*0.04);c.stroke();
+}
+
+// Hamster: brown round body, huge square teeth, round eyes, pink cheeks, round ears
+function drawHamster(c,x,y,r,fdx,fdy,isIt){
+  // shadow
+  c.fillStyle='rgba(0,0,0,0.3)';
+  c.beginPath();c.ellipse(x+2,y+r*0.9,r*0.8,r*0.3,0,0,Math.PI*2);c.fill();
+  // ears
+  c.fillStyle=isIt?'#e8a868':'#c8936a';
+  c.strokeStyle=isIt?'#ff1744':'#8a5a30';
+  c.lineWidth=1.5;
+  c.beginPath();c.arc(x-r*0.62,y-r*0.82,r*0.32,0,Math.PI*2);c.fill();c.stroke();
+  c.beginPath();c.arc(x+r*0.62,y-r*0.82,r*0.32,0,Math.PI*2);c.fill();c.stroke();
+  // inner ear
+  c.fillStyle='rgba(255,160,160,0.6)';
+  c.beginPath();c.arc(x-r*0.62,y-r*0.82,r*0.18,0,Math.PI*2);c.fill();
+  c.beginPath();c.arc(x+r*0.62,y-r*0.82,r*0.18,0,Math.PI*2);c.fill();
+  // body
+  c.fillStyle=isIt?'#e8a868':'#c8936a';
+  c.strokeStyle=isIt?'#ff1744':'#8a5a30';
+  c.lineWidth=isIt?2.5:1.5;
+  c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.fill();c.stroke();
+  // belly
+  c.fillStyle='rgba(245,210,170,0.6)';
+  c.beginPath();c.ellipse(x,y+r*0.15,r*0.55,r*0.7,0,0,Math.PI*2);c.fill();
+  // eyes
+  const eyeR=r*0.22;
+  const eyeOffY=y-r*0.28;
+  c.fillStyle='#333';
+  c.beginPath();c.arc(x-r*0.35,eyeOffY,eyeR,0,Math.PI*2);c.fill();
+  c.beginPath();c.arc(x+r*0.35,eyeOffY,eyeR,0,Math.PI*2);c.fill();
+  // eye shine
+  c.fillStyle='#fff';
+  c.beginPath();c.arc(x-r*0.35-eyeR*0.3,eyeOffY-eyeR*0.3,eyeR*0.35,0,Math.PI*2);c.fill();
+  c.beginPath();c.arc(x+r*0.35-eyeR*0.3,eyeOffY-eyeR*0.3,eyeR*0.35,0,Math.PI*2);c.fill();
+  // pink cheeks
+  c.fillStyle='rgba(255,130,130,0.5)';
+  c.beginPath();c.ellipse(x-r*0.55,y+r*0.08,r*0.28,r*0.2,0,0,Math.PI*2);c.fill();
+  c.beginPath();c.ellipse(x+r*0.55,y+r*0.08,r*0.28,r*0.2,0,0,Math.PI*2);c.fill();
+  // big square teeth
+  c.fillStyle='#fffce0';
+  c.strokeStyle='#c0b060';c.lineWidth=0.8;
+  c.beginPath();c.roundRect(x-r*0.32,y+r*0.32,r*0.28,r*0.4,2);c.fill();c.stroke();
+  c.beginPath();c.roundRect(x+r*0.04,y+r*0.32,r*0.28,r*0.4,2);c.fill();c.stroke();
+  // tooth divider line
+  c.strokeStyle='#c0b060';c.lineWidth=1;
+  c.beginPath();c.moveTo(x,y+r*0.32);c.lineTo(x,y+r*0.72);c.stroke();
+}
+
+function drawPlayer(p){
+  const x=p.x, y=p.y, r=PLAYER_RADIUS;
+  const fdx=p.facingDx||0, fdy=p.facingDy||0;
+
+  // IT aura (pulsing radial glow)
+  if(p.isIt){
+    const pulse = 0.7 + 0.3*Math.sin(performance.now()/180);
+    const grd = ctx.createRadialGradient(x,y,r*0.5,x,y,r*2.8);
+    grd.addColorStop(0,`rgba(233,69,96,${0.55*pulse})`);
+    grd.addColorStop(1,'rgba(233,69,96,0)');
+    ctx.fillStyle = grd;
+    ctx.beginPath();
+    ctx.arc(x,y,r*2.8,0,Math.PI*2);
+    ctx.fill();
+  }
+
+  drawCharacter(ctx, x, y, r, fdx, fdy, p.isIt, p.charIdx||0);
+
+  // Tag cooldown arc
+  if(p.id === prevItId && tagCooldownTimer > 0){
+    const pct = tagCooldownTimer / TAG_COOLDOWN;
+    ctx.beginPath();
+    ctx.arc(x,y,r+6,-Math.PI/2,-Math.PI/2+Math.PI*2*pct);
+    ctx.strokeStyle = 'rgba(255,214,0,0.7)';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  }
+
+  // Name label (offset upward enough to clear tallest parts: eye stalks, hat)
+  const labelOffY = r * 2.2;
+  ctx.font = 'bold 11px Segoe UI,sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  const nameY = y - labelOffY;
+  const tw = ctx.measureText(p.name).width;
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(x-tw/2-3, nameY-13, tw+6, 14);
+  ctx.fillStyle = p.isIt ? '#ff6b8a' : '#eee';
+  ctx.fillText(p.name, x, nameY);
+
+  // IT badge above name
+  if(p.isIt){
+    ctx.font = 'bold 10px Segoe UI,sans-serif';
+    ctx.textBaseline = 'middle';
+    const bw=28, bh=16;
+    const badgeCy = y - labelOffY - 20;
+    ctx.fillStyle = '#e94560';
+    ctx.beginPath();
+    ctx.roundRect(x - bw/2, badgeCy - bh/2, bw, bh, 4);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.fillText('IT', x, badgeCy);
+  }
+}
+
+// ─── HUD ─────────────────────────────────────────────────────────────────────
+function updateHUD(){
+  const secs = Math.ceil(roundTimer);
+  const el = document.getElementById('timerDisplay');
+  el.textContent = secs <= 0 ? '0' : (secs >= 60 ? `${Math.floor(secs/60)}:${(secs%60).toString().padStart(2,'0')}` : secs.toString());
+  el.classList.toggle('urgent', roundTimer <= 5 && roundTimer > 0);
+
+  const itPlayer = getPlayer(itPlayerId);
+  const info = document.getElementById('hudInfo');
+  const itName = itPlayer ? itPlayer.name : '?';
+  const spectateChip = localSpectating
+    ? `<div class="hud-pill spectate">SPECTATING</div>` : '';
+  info.innerHTML = `
+    <div class="hud-pill">Round ${currentRound}</div>
+    <div class="hud-pill">${players.length} remaining</div>
+    <div class="hud-pill it">IT: ${itName}</div>
+    ${spectateChip}
+  `;
+}
+
+// ─── Results / Replay ─────────────────────────────────────────────────────────
+function playAgain(){
+  document.getElementById('roundEnd').classList.remove('active');
+  if(gameMode==='solo'){
+    startSoloGame();
+  } else if(gameMode==='host'){
+    hostStartGame();
+  } else {
+    document.getElementById('statusMsg').textContent = 'Waiting for host to restart...';
+  }
+}
+
+function goToMenu(){
+  document.getElementById('roundEnd').classList.remove('active');
+  document.getElementById('gameWrapper').classList.remove('active');
+  document.getElementById('menuScreen').classList.remove('hidden');
+  document.getElementById('elimFlash').classList.remove('active');
+  document.getElementById('elimPanel').innerHTML = '';
+  gameState = 'menu';
+  if(rafId){cancelAnimationFrame(rafId);rafId=null;}
+  if(peer){peer.destroy();peer=null;}
+  connections=[];
+}
+
+function getPlayer(id){return players.find(p=>p.id===id)||null;}
+
+// ─── Input ───────────────────────────────────────────────────────────────────
+document.addEventListener('keydown',e=>{
+  keys[e.key.toLowerCase()]=true;
+  if(e.key===' '&&gameState==='menu') startSoloGame();
+  if(e.key==='Escape'&&(gameState==='playing'||gameState==='between')) goToMenu();
+});
+document.addEventListener('keyup',e=>{ keys[e.key.toLowerCase()]=false; });
+window.addEventListener('blur',()=>{ Object.keys(keys).forEach(k=>keys[k]=false); });
+
+// ─── Online / PeerJS ─────────────────────────────────────────────────────────
+function createRoom(){
+  const name = document.getElementById('playerName').value.trim() || 'Player';
+  roomCode = genId(6);
+  const peerId = 'tagjs-' + roomCode;
+  document.getElementById('lobbyStatus').textContent = 'Connecting...';
+  document.getElementById('onlineError').textContent = '';
+
+  peer = new Peer(peerId);
+  peer.on('open', ()=>{
+    isHost = true;
+    gameMode = 'host';
+    localPlayerId = 'host';
+    players = [makePlayer('host', name, false, 0, randInt(0, CHARACTER_ROSTER.length-1))];
+    eliminated = [];
+    enterLobby(true);
+  });
+  peer.on('connection', conn=>{ setupHostConnection(conn); });
+  peer.on('error', err=>{ document.getElementById('onlineError').textContent = 'Error: ' + err.message; });
+}
+
+function showJoinRoom(){
+  document.getElementById('joinRoomRow').classList.remove('hidden');
+  document.getElementById('joinCode').focus();
+}
+
+function joinRoom(){
+  const code = document.getElementById('joinCode').value.trim().toUpperCase();
+  if(code.length !== 6){document.getElementById('onlineError').textContent='Enter a 6-character code';return;}
+  const name = document.getElementById('playerName').value.trim() || 'Player';
+  roomCode = code;
+  document.getElementById('lobbyStatus').textContent = 'Connecting...';
+  document.getElementById('onlineError').textContent = '';
+
+  peer = new Peer();
+  peer.on('open', ()=>{
+    const conn = peer.connect('tagjs-'+code, {reliable:true});
+    connections = [conn];
+    setupClientConnection(conn, name);
+  });
+  peer.on('error', err=>{ document.getElementById('onlineError').textContent = 'Error: ' + err.message; });
+}
+
+function setupHostConnection(conn){
+  connections.push(conn);
+  conn.on('data', data=>{
+    if(data.type==='join'){
+      const pid = conn.peer;
+      // Assign a character index not already taken
+      const usedChars = new Set(players.map(p=>p.charIdx));
+      let ci = 0;
+      for(let k=0;k<CHARACTER_ROSTER.length;k++){if(!usedChars.has(k)){ci=k;break;}}
+      const p = makePlayer(pid, data.name, false, players.length, ci);
+      players.push(p);
+      conn._playerId = pid;
+      updateLobbyUI();
+      broadcastLobbyState();
+    } else if(data.type==='input'){
+      const pid = conn._playerId||conn.peer;
+      // Ignore inputs from eliminated players
+      if(!eliminated.find(e=>e.id===pid)){
+        pendingInputs[pid]={dx:data.dx,dy:data.dy};
+      }
+    }
+  });
+  conn.on('close',()=>{
+    if(conn._playerId){
+      players = players.filter(p=>p.id!==conn._playerId);
+      connections = connections.filter(c=>c!==conn);
+      if(gameState==='playing'&&itPlayerId===conn._playerId){
+        if(players.length>0) setIt(players[randInt(0,players.length-1)].id,null);
+      }
+    }
+    updateLobbyUI();
+    broadcastLobbyState();
+  });
+}
+
+function setupClientConnection(conn, myName){
+  isHost = false;
+  gameMode = 'client';
+  localPlayerId = null; // set when we get join-ack
+  conn.on('open',()=>{
+    conn.send({type:'join', name:myName});
+    enterLobby(false);
+  });
+  conn.on('data', data=>{
+    if(data.type==='lobby'){
+      updateClientLobby(data);
+    } else if(data.type==='start'){
+      localPlayerId = data.localId || conn.peer;
+      eliminated = [];
+      currentRound = 1;
+      localSpectating = false;
+      applyServerState(data);
+      initGame();
+    } else if(data.type==='state'){
+      applyServerState(data);
+    } else if(data.type==='tag'){
+      setIt(data.newIt, data.prevIt);
+      showTagFlash();
+      showTaggedLabel();
+    } else if(data.type==='eliminate'){
+      // Host says player X is eliminated
+      const elim = players.find(p=>p.id===data.elimId);
+      if(elim){
+        eliminated.push({id:elim.id, name:elim.name, color:elim.color, round:data.round});
+        if(elim.id === localPlayerId) localSpectating = true;
+        players = players.filter(p=>p.id !== data.elimId);
+        updateElimPanel();
+        showElimFlash(data.elimName, null);
+        betweenTimer = ELIM_FLASH_DURATION + BETWEEN_ROUND_DELAY;
+        gameState = 'between';
+      }
+    } else if(data.type==='roundStart'){
+      document.getElementById('elimFlash').classList.remove('active');
+      currentRound = data.round;
+      roundTimer = data.duration;
+      gameState = 'playing';
+      applyServerState(data);
+    } else if(data.type==='gameover'){
+      document.getElementById('elimFlash').classList.remove('active');
+      applyFinalResults(data.results);
+    } else if(data.type==='hostLeft'){
+      alert('Host disconnected. Returning to menu.');
+      goToMenu();
+    }
+  });
+  conn.on('close',()=>{
+    if(gameState==='playing'||gameState==='between'){
+      alert('Disconnected from host.');
+      goToMenu();
+    }
+  });
+}
+
+function applyFinalResults(results){
+  gameState = 'gameover';
+  if(rafId){cancelAnimationFrame(rafId);rafId=null;}
+  const heading = document.getElementById('resultHeading');
+  heading.textContent = results[0]?.name ? `${results[0].name} wins!` : 'Game Over!';
+  heading.className = '';
+  const lb = document.getElementById('leaderboard');
+  lb.innerHTML = results.map((r,i)=>`
+    <div class="lb-row ${i===0?'first':''}">
+      <div class="lb-rank ${i===0?'gold':''}">#${i+1}</div>
+      <div style="flex:1;text-align:left">
+        <div class="lb-name" style="color:${r.color}">${r.name}</div>
+        ${r.survived?'<div class="lb-detail">Survivor</div>':`<div class="lb-detail">Eliminated round ${r.round}</div>`}
+      </div>
+      <div class="${r.survived?'lb-badge':'lb-badge elim'}">${r.survived?'WINNER':'ELIMINATED'}</div>
+    </div>
+  `).join('');
+  document.getElementById('roundEnd').classList.add('active');
+}
+
+function enterLobby(asHost){
+  gameState = 'lobby';
+  document.getElementById('menuScreen').classList.add('hidden');
+  document.getElementById('lobbyScreen').classList.remove('hidden');
+  document.getElementById('roomCodeDisplay').textContent = roomCode;
+  document.getElementById('hostControls').classList.toggle('hidden', !asHost);
+  updateLobbyUI();
+}
+
+function updateLobbyUI(){
+  const list = document.getElementById('lobbyPlayersList');
+  list.innerHTML = players.map(p=>`
+    <div class="lobby-player-row">
+      <div class="player-dot ${p.id==='host'?'host':''}"></div>
+      <span>${p.name}</span>
+      ${p.id==='host'?'<span style="color:var(--muted);font-size:.75rem;margin-left:auto">Host</span>':''}
+    </div>
+  `).join('');
+  document.getElementById('lobbyWaitStatus').textContent =
+    `${players.length} player${players.length!==1?'s':''} in lobby`;
+}
+
+function updateClientLobby(data){
+  document.getElementById('lobbyWaitStatus').textContent = `${data.players.length} players in lobby`;
+  const list = document.getElementById('lobbyPlayersList');
+  list.innerHTML = data.players.map(p=>`
+    <div class="lobby-player-row">
+      <div class="player-dot ${p.host?'host':''}"></div>
+      <span>${p.name}</span>
+      ${p.host?'<span style="color:var(--muted);font-size:.75rem;margin-left:auto">Host</span>':''}
+    </div>
+  `).join('');
+}
+
+function broadcastLobbyState(){
+  const data = {type:'lobby', players: players.map(p=>({name:p.name,host:p.id==='host'}))};
+  connections.forEach(c=>{try{c.send(data);}catch(e){}});
+}
+
+function hostStartGame(){
+  if(gameMode!=='host'&&gameMode!=='solo') return;
+  if(gameMode==='host'){
+    const nb = parseInt(document.getElementById('lobbyBotCount').value);
+    botDifficulty = document.getElementById('lobbyBotDiff').value;
+    roundDuration = parseInt(document.getElementById('lobbyRoundTime').value);
+    for(let i=0;i<nb;i++){
+      const usedChars = new Set(players.map(p=>p.charIdx));
+      let ci = 0;
+      for(let k=0;k<CHARACTER_ROSTER.length;k++){if(!usedChars.has(k)){ci=k;break;}}
+      const charName = CHARACTER_ROSTER[ci].name;
+      players.push(makePlayer('bot'+i, charName, true, players.length, ci));
+    }
+    players.forEach(p=>{const sp=safeSpawn();p.x=sp.x;p.y=sp.y;});
+    const itIdx = randInt(0,players.length-1);
+    setIt(players[itIdx].id,null);
+    // Tell each client their own peer id as localId
+    const state = buildStateMsg();
+    state.type = 'start';
+    state.round = currentRound;
+    state.duration = roundDuration;
+    connections.forEach(c=>{
+      try{c.send({...state, localId: c._playerId});}catch(e){}
+    });
+  }
+  eliminated = [];
+  currentRound = 1;
+  localSpectating = false;
+  initGame();
+}
+
+function leaveLobby(){
+  if(peer){peer.destroy();peer=null;}
+  connections=[];
+  players=[];
+  gameState='menu';
+  document.getElementById('lobbyScreen').classList.add('hidden');
+  document.getElementById('menuScreen').classList.remove('hidden');
+}
+
+function copyRoomCode(){
+  navigator.clipboard.writeText(roomCode).then(()=>{
+    const t=document.getElementById('copiedToast');
+    t.textContent='Copied!';
+    setTimeout(()=>t.textContent='',2000);
+  });
+}
+
+// ─── Network helpers ──────────────────────────────────────────────────────────
+function buildStateMsg(){
+  return {
+    type:'state',
+    time: roundTimer,
+    itId: itPlayerId,
+    prevItId,
+    tagCooldown: tagCooldownTimer,
+    players: players.map(p=>({id:p.id,name:p.name,x:p.x,y:p.y,isIt:p.isIt,color:p.color,isBot:p.isBot,speed:p.speed,charIdx:p.charIdx}))
+  };
+}
+
+function broadcastState(){
+  const msg = buildStateMsg();
+  connections.forEach(c=>{try{c.send(msg);}catch(e){}});
+}
+
+function broadcastTag(newItId){
+  const msg={type:'tag',newIt:newItId,prevIt:prevItId};
+  connections.forEach(c=>{try{c.send(msg);}catch(e){}});
+}
+
+function broadcastElimination(elimId){
+  const elim = eliminated[eliminated.length-1];
+  const msg={type:'eliminate',elimId,elimName:elim.name,round:elim.round};
+  connections.forEach(c=>{try{c.send(msg);}catch(e){}});
+}
+
+function broadcastRoundStart(){
+  const state = buildStateMsg();
+  state.type = 'roundStart';
+  state.round = currentRound;
+  state.duration = roundDuration;
+  connections.forEach(c=>{try{c.send(state);}catch(e){}});
+}
+
+function broadcastGameOver(results){
+  const msg={type:'gameover',results};
+  connections.forEach(c=>{try{c.send(msg);}catch(e){}});
+}
+
+function applyServerState(data){
+  roundTimer = data.time ?? roundTimer;
+  itPlayerId = data.itId;
+  prevItId = data.prevItId;
+  tagCooldownTimer = data.tagCooldown||0;
+  if(data.players){
+    data.players.forEach(sp=>{
+      let p = getPlayer(sp.id);
+      if(!p){
+        p = makePlayer(sp.id,sp.name,sp.isBot,players.length, sp.charIdx);
+        players.push(p);
+      }
+      if(sp.id !== localPlayerId || gameMode==='client'){
+        p.x=sp.x; p.y=sp.y;
+      }
+      p.isIt=sp.isIt;
+      p.color=sp.color||p.color;
+      p.name=sp.name;
+      if(sp.charIdx !== undefined) p.charIdx = sp.charIdx;
+    });
+    const serverIds = new Set(data.players.map(p=>p.id));
+    players = players.filter(p=>serverIds.has(p.id));
+  }
+}
+
+function sendInputToHost(){
+  if(connections.length===0) return;
+  readLocalInput();
+  try{connections[0].send({type:'input',dx:localDx,dy:localDy});}catch(e){}
+}
+
+// ─── Window resize ───────────────────────────────────────────────────────────
+window.addEventListener('resize',()=>{
+  if(gameState==='playing'||gameState==='between') setupCanvas();
+});
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+setMode('solo');
+</script>
+</body>
+</html>
