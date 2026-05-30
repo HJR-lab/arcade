@@ -933,315 +933,320 @@ function drawCharacter(c, x, y, r, fdx, fdy, isIt, charIdx){
   }
 }
 
-// Sponge: yellow rounded-square body, big eyes with touching pupils, belt, stick limbs, pink cheeks
+// Sponge: yellow wobbly-square body, cross-eyed big eyes, pink cheeks, brown pants, stick limbs
 function drawSponge(c,x,y,r,fdx,fdy,isIt){
-  const s=r*1.1;
-  // shadow
-  c.fillStyle='rgba(0,0,0,0.3)';
-  c.beginPath();c.ellipse(x+2,y+r*0.9,r*0.8,r*0.35,0,0,Math.PI*2);c.fill();
-  // legs
-  c.strokeStyle='#333';c.lineWidth=r*0.18;c.lineCap='round';
-  c.beginPath();c.moveTo(x-r*0.35,y+r*0.72);c.lineTo(x-r*0.45,y+r+r*0.55);c.stroke();
-  c.beginPath();c.moveTo(x+r*0.35,y+r*0.72);c.lineTo(x+r*0.45,y+r+r*0.55);c.stroke();
-  // arms
-  c.beginPath();c.moveTo(x-s*0.7,y-r*0.1);c.lineTo(x-s*1.25,y+r*0.4);c.stroke();
-  c.beginPath();c.moveTo(x+s*0.7,y-r*0.1);c.lineTo(x+s*1.25,y+r*0.4);c.stroke();
-  // body (rounded square)
-  c.fillStyle=isIt?'#ff9930':'#f5c842';
-  c.strokeStyle=isIt?'#ff1744':'#c49a10';
-  c.lineWidth=isIt?2.5:1.5;
-  c.beginPath();
-  c.roundRect(x-s,y-r,s*2,r*2,r*0.35);
-  c.fill();c.stroke();
-  // belt band
-  const beltY=y+r*0.22;
-  c.fillStyle='#6b3a1f';
-  c.fillRect(x-s,beltY,s*2,r*0.42);
-  // buckle
-  c.fillStyle='#c8a020';
-  c.fillRect(x-r*0.2,beltY+r*0.05,r*0.4,r*0.3);
-  // pink cheeks
-  c.fillStyle='rgba(255,160,160,0.55)';
-  c.beginPath();c.ellipse(x-r*0.6,y,r*0.28,r*0.2,0,0,Math.PI*2);c.fill();
-  c.beginPath();c.ellipse(x+r*0.6,y,r*0.28,r*0.2,0,0,Math.PI*2);c.fill();
-  // eyes (two big circles whose pupils touch at center)
-  const eyeR=r*0.34;
-  const eyeOffY=y-r*0.18;
-  const eyeLX=x-eyeR*0.85, eyeRX=x+eyeR*0.85;
-  c.fillStyle='#fff';
-  c.strokeStyle='#333';c.lineWidth=1;
-  c.beginPath();c.arc(eyeLX,eyeOffY,eyeR,0,Math.PI*2);c.fill();c.stroke();
-  c.beginPath();c.arc(eyeRX,eyeOffY,eyeR,0,Math.PI*2);c.fill();c.stroke();
-  // pupils touch at center x
-  const ex=fdx*r*0.08, ey=fdy*r*0.08;
+  const ow=r*1.05, oh=r*1.15;
+  // stick legs with oval shoes
+  c.strokeStyle='#222';c.lineWidth=2;c.lineCap='round';
+  c.beginPath();c.moveTo(x-r*0.3,y+oh*0.82);c.lineTo(x-r*0.38,y+oh+r*0.38);c.stroke();
+  c.beginPath();c.moveTo(x+r*0.3,y+oh*0.82);c.lineTo(x+r*0.38,y+oh+r*0.38);c.stroke();
+  // small black oval shoes
   c.fillStyle='#111';
-  c.beginPath();c.arc(eyeLX+eyeR*0.55+ex,eyeOffY+ey,eyeR*0.45,0,Math.PI*2);c.fill();
-  c.beginPath();c.arc(eyeRX-eyeR*0.55+ex,eyeOffY+ey,eyeR*0.45,0,Math.PI*2);c.fill();
-  // mouth
-  c.strokeStyle='#333';c.lineWidth=r*0.12;
-  c.beginPath();c.arc(x,y+r*0.25,r*0.22,0.15,Math.PI-0.15);c.stroke();
-}
-
-// Crab: red dome body, tall eye-stalks, polka dots, stick legs
-function drawCrab(c,x,y,r,fdx,fdy,isIt){
-  // shadow
-  c.fillStyle='rgba(0,0,0,0.3)';
-  c.beginPath();c.ellipse(x+2,y+r*0.7,r*0.85,r*0.3,0,0,Math.PI*2);c.fill();
-  // legs (3 pairs)
-  c.strokeStyle='#333';c.lineWidth=r*0.16;c.lineCap='round';
-  const legOffsets=[[-0.65,0.7],[-0.35,0.85],[0.35,0.85],[0.65,0.7]];
-  for(const [lx,ly] of legOffsets){
-    c.beginPath();c.moveTo(x+r*lx,y+r*(ly-0.3));c.lineTo(x+r*lx*1.6,y+r*ly+r*0.5);c.stroke();
-  }
-  // claws (just thicker stubs)
-  c.lineWidth=r*0.2;
-  c.beginPath();c.moveTo(x-r*0.8,y+r*0.1);c.lineTo(x-r*1.45,y-r*0.3);c.stroke();
-  c.beginPath();c.moveTo(x+r*0.8,y+r*0.1);c.lineTo(x+r*1.45,y-r*0.3);c.stroke();
-  // body (dome)
-  c.fillStyle=isIt?'#ff5533':'#e8392a';
-  c.strokeStyle=isIt?'#ff1744':'#a0200f';
-  c.lineWidth=isIt?2.5:1.5;
+  c.beginPath();c.ellipse(x-r*0.4,y+oh+r*0.42,r*0.16,r*0.1,0.2,0,Math.PI*2);c.fill();
+  c.beginPath();c.ellipse(x+r*0.4,y+oh+r*0.42,r*0.16,r*0.1,-0.2,0,Math.PI*2);c.fill();
+  // stick arms
+  c.strokeStyle='#222';c.lineWidth=2;
+  c.beginPath();c.moveTo(x-ow*0.88,y-r*0.05);c.quadraticCurveTo(x-ow*1.1,y+r*0.1,x-ow*1.22,y+r*0.38);c.stroke();
+  c.beginPath();c.moveTo(x+ow*0.88,y-r*0.05);c.quadraticCurveTo(x+ow*1.1,y+r*0.1,x+ow*1.22,y+r*0.38);c.stroke();
+  // wobbly body shape
+  c.fillStyle=isIt?'#ffb830':'#f4d83a';
+  c.strokeStyle='#2a1f15';c.lineWidth=2.5;
   c.beginPath();
-  c.arc(x,y,r*1.0,Math.PI,0);
-  c.lineTo(x+r,y+r*0.5);
-  c.arc(x,y+r*0.5,r,0,Math.PI);
-  c.closePath();
-  c.fill();c.stroke();
-  // polka dots on body
-  c.fillStyle='rgba(255,160,160,0.5)';
-  for(const [px,py] of [[-0.45,-0.3],[0.45,-0.3],[0,-0.55],[0.25,0.1],[-0.25,0.1]]){
-    c.beginPath();c.arc(x+r*px,y+r*py,r*0.13,0,Math.PI*2);c.fill();
-  }
-  // eye stalks
-  const stalkH=r*0.9;
-  const stalkW=r*0.12;
-  c.fillStyle='#a01808';
-  c.fillRect(x-r*0.38-stalkW/2,y-r-stalkH,stalkW,stalkH);
-  c.fillRect(x+r*0.38-stalkW/2,y-r-stalkH,stalkW,stalkH);
-  // eyeball at top of stalks
-  const stalkTopY=y-r-stalkH;
-  const eyeR=r*0.24;
-  c.fillStyle='#fff';c.strokeStyle='#333';c.lineWidth=1;
-  c.beginPath();c.arc(x-r*0.38,stalkTopY,eyeR,0,Math.PI*2);c.fill();c.stroke();
-  c.beginPath();c.arc(x+r*0.38,stalkTopY,eyeR,0,Math.PI*2);c.fill();c.stroke();
-  const ex=fdx*eyeR*0.4, ey=fdy*eyeR*0.4;
-  c.fillStyle='#111';
-  c.beginPath();c.arc(x-r*0.38+ex,stalkTopY+ey,eyeR*0.5,0,Math.PI*2);c.fill();
-  c.beginPath();c.arc(x+r*0.38+ex,stalkTopY+ey,eyeR*0.5,0,Math.PI*2);c.fill();
-}
-
-// Star: pink rounded-pentagon body, big eyes, green shorts with purple dots, stick limbs
-function drawStar(c,x,y,r,fdx,fdy,isIt){
-  // shadow
-  c.fillStyle='rgba(0,0,0,0.3)';
-  c.beginPath();c.ellipse(x+2,y+r*0.9,r*0.75,r*0.3,0,0,Math.PI*2);c.fill();
-  // legs
-  c.strokeStyle='#333';c.lineWidth=r*0.17;c.lineCap='round';
-  c.beginPath();c.moveTo(x-r*0.3,y+r*0.8);c.lineTo(x-r*0.4,y+r*1.5);c.stroke();
-  c.beginPath();c.moveTo(x+r*0.3,y+r*0.8);c.lineTo(x+r*0.4,y+r*1.5);c.stroke();
-  // arms (starfish-like stubs)
-  c.lineWidth=r*0.2;
-  c.beginPath();c.moveTo(x-r*0.85,y-r*0.25);c.lineTo(x-r*1.4,y-r*0.6);c.stroke();
-  c.beginPath();c.moveTo(x+r*0.85,y-r*0.25);c.lineTo(x+r*1.4,y-r*0.6);c.stroke();
-  // body (rounded pentagon)
-  c.fillStyle=isIt?'#ff88bb':'#f06fa4';
-  c.strokeStyle=isIt?'#ff1744':'#c0407a';
-  c.lineWidth=isIt?2.5:1.5;
-  c.save();c.translate(x,y);
-  c.beginPath();
-  for(let i=0;i<5;i++){
-    const a=-Math.PI/2+i*Math.PI*2/5;
-    const rx=Math.cos(a)*r, ry=Math.sin(a)*r;
-    i===0?c.moveTo(rx,ry):c.lineTo(rx,ry);
-  }
-  c.closePath();
-  // use roundRect trick via quadratic curves
-  c.restore();
-  c.beginPath();
-  const pts=[];
-  for(let i=0;i<5;i++){const a=-Math.PI/2+i*Math.PI*2/5;pts.push([x+Math.cos(a)*r,y+Math.sin(a)*r]);}
-  c.moveTo((pts[0][0]+pts[4][0])/2,(pts[0][1]+pts[4][1])/2);
-  for(let i=0;i<5;i++){const n=(i+1)%5;c.quadraticCurveTo(pts[i][0],pts[i][1],(pts[i][0]+pts[n][0])/2,(pts[i][1]+pts[n][1])/2);}
+  c.moveTo(x-ow+r*0.08,y-oh+r*0.12);
+  c.bezierCurveTo(x-ow-r*0.06,y-oh*0.5,x-ow+r*0.05,y,x-ow,y+oh*0.55);
+  c.bezierCurveTo(x-ow+r*0.04,y+oh*0.8,x-ow*0.4,y+oh+r*0.04,x,y+oh+r*0.02);
+  c.bezierCurveTo(x+ow*0.4,y+oh+r*0.04,x+ow-r*0.04,y+oh*0.8,x+ow,y+oh*0.55);
+  c.bezierCurveTo(x+ow-r*0.05,y,x+ow+r*0.06,y-oh*0.5,x+ow-r*0.08,y-oh+r*0.12);
+  c.bezierCurveTo(x+ow*0.5,y-oh-r*0.05,x-ow*0.5,y-oh-r*0.05,x-ow+r*0.08,y-oh+r*0.12);
   c.closePath();c.fill();c.stroke();
-  // green shorts on lower half
-  c.fillStyle='#3db84a';
+  // thin brown mid-line
+  c.strokeStyle='#5a3a1a';c.lineWidth=1.5;
+  c.beginPath();c.moveTo(x-ow,y+r*0.02);c.lineTo(x+ow,y+r*0.02);c.stroke();
+  // brown pants band (lower third of body)
+  c.fillStyle='#5a3a1a';
   c.save();c.beginPath();
-  c.arc(x,y,r,0.1*Math.PI,0.9*Math.PI);
-  c.lineTo(x-r,y+r*0.2);
-  c.quadraticCurveTo(x,y+r*0.8,x+r,y+r*0.2);
+  c.rect(x-ow-1,y+r*0.08,ow*2+2,oh*0.55);
+  c.clip();
+  c.beginPath();
+  c.moveTo(x-ow,y+oh*0.55);
+  c.bezierCurveTo(x-ow+r*0.04,y+oh*0.8,x-ow*0.4,y+oh+r*0.04,x,y+oh+r*0.02);
+  c.bezierCurveTo(x+ow*0.4,y+oh+r*0.04,x+ow-r*0.04,y+oh*0.8,x+ow,y+oh*0.55);
+  c.lineTo(x+ow,y+r*0.08);c.lineTo(x-ow,y+r*0.08);c.closePath();
+  c.fill();c.restore();
+  // pink rosy cheek dots (no outline)
+  c.fillStyle='#ff9aa2';
+  c.beginPath();c.arc(x-r*0.62,y-r*0.04,r*0.12,0,Math.PI*2);c.fill();
+  c.beginPath();c.arc(x+r*0.62,y-r*0.04,r*0.12,0,Math.PI*2);c.fill();
+  // eyes: big white circles with inward-tilted (cross-eyed) pupils
+  const eyeR=r*0.3;
+  const eyeY=y-oh*0.42;
+  const eLX=x-eyeR*0.95, eRX=x+eyeR*0.95;
+  c.fillStyle='#fff';c.strokeStyle='#2a1f15';c.lineWidth=1.5;
+  c.beginPath();c.arc(eLX,eyeY,eyeR,0,Math.PI*2);c.fill();c.stroke();
+  c.beginPath();c.arc(eRX,eyeY,eyeR,0,Math.PI*2);c.fill();c.stroke();
+  // pupils tilted inward (cross-eyed-cute)
+  c.fillStyle='#111';
+  c.save();c.translate(eLX+eyeR*0.38,eyeY+r*0.04);c.rotate(0.3);
+  c.beginPath();c.ellipse(0,0,eyeR*0.28,eyeR*0.42,0,0,Math.PI*2);c.fill();c.restore();
+  c.save();c.translate(eRX-eyeR*0.38,eyeY+r*0.04);c.rotate(-0.3);
+  c.beginPath();c.ellipse(0,0,eyeR*0.28,eyeR*0.42,0,0,Math.PI*2);c.fill();c.restore();
+  // tiny mouth line
+  c.strokeStyle='#2a1f15';c.lineWidth=1.5;
+  c.beginPath();c.moveTo(x-r*0.1,y+r*0.08);c.lineTo(x+r*0.1,y+r*0.08);c.stroke();
+}
+
+// Crab: red dome, tall antenna eye-stalks with inward pupils, pink polka dots, stick legs
+function drawCrab(c,x,y,r,fdx,fdy,isIt){
+  // thin stick legs, 3 per side
+  c.strokeStyle='#222';c.lineWidth=2;c.lineCap='round';
+  const legPairs=[[-0.7,0.45,-1.3,0.8],[-0.5,0.55,-0.95,1.05],[0.5,0.55,0.95,1.05],[0.7,0.45,1.3,0.8]];
+  for(const [ax,ay,bx,by] of legPairs){
+    c.beginPath();c.moveTo(x+r*ax,y+r*ay);c.lineTo(x+r*bx,y+r*by);c.stroke();
+  }
+  // dome body (wider at base, peaked)
+  c.fillStyle=isIt?'#ff5533':'#e63946';
+  c.strokeStyle='#2a1f15';c.lineWidth=2.5;
+  c.beginPath();
+  c.moveTo(x-r*1.05,y+r*0.52);
+  c.bezierCurveTo(x-r*1.08,y+r*0.1,x-r*0.9,y-r*0.85,x,y-r*1.0);
+  c.bezierCurveTo(x+r*0.9,y-r*0.85,x+r*1.08,y+r*0.1,x+r*1.05,y+r*0.52);
+  c.quadraticCurveTo(x,y+r*0.62,x-r*1.05,y+r*0.52);
+  c.closePath();c.fill();c.stroke();
+  // pink polka dots on dome
+  c.fillStyle='#ffb3ba';
+  for(const [px,py] of [[-0.45,-0.35],[0.42,-0.4],[0.0,-0.65],[0.28,0.1],[-0.3,0.05]]){
+    c.beginPath();c.arc(x+r*px,y+r*py,r*(0.09+Math.abs(px)*0.04),0,Math.PI*2);c.fill();
+  }
+  // eye stalks (tall thin vertical lines)
+  const stalkTopL=y-r*1.58, stalkTopR=y-r*1.58;
+  c.strokeStyle='#2a1f15';c.lineWidth=2;
+  c.beginPath();c.moveTo(x-r*0.3,y-r*0.95);c.lineTo(x-r*0.3,stalkTopL);c.stroke();
+  c.beginPath();c.moveTo(x+r*0.3,y-r*0.95);c.lineTo(x+r*0.3,stalkTopR);c.stroke();
+  // eyeballs at top of stalks
+  const eyeR=r*0.22;
+  c.fillStyle='#fff';c.strokeStyle='#2a1f15';c.lineWidth=1.5;
+  c.beginPath();c.arc(x-r*0.3,stalkTopL,eyeR,0,Math.PI*2);c.fill();c.stroke();
+  c.beginPath();c.arc(x+r*0.3,stalkTopR,eyeR,0,Math.PI*2);c.fill();c.stroke();
+  // pupils angled inward/downward toward body
+  c.fillStyle='#111';
+  c.save();c.translate(x-r*0.3+eyeR*0.35,stalkTopL+eyeR*0.35);c.rotate(0.5);
+  c.beginPath();c.ellipse(0,0,eyeR*0.28,eyeR*0.42,0,0,Math.PI*2);c.fill();c.restore();
+  c.save();c.translate(x+r*0.3-eyeR*0.35,stalkTopR+eyeR*0.35);c.rotate(-0.5);
+  c.beginPath();c.ellipse(0,0,eyeR*0.28,eyeR*0.42,0,0,Math.PI*2);c.fill();c.restore();
+}
+
+// Star: pink rounded-5-lobe body, big cross-eyed eyes, green shorts with purple dots, stick limbs
+function drawStar(c,x,y,r,fdx,fdy,isIt){
+  // stick legs
+  c.strokeStyle='#222';c.lineWidth=2;c.lineCap='round';
+  c.beginPath();c.moveTo(x-r*0.28,y+r*0.82);c.lineTo(x-r*0.35,y+r*1.45);c.stroke();
+  c.beginPath();c.moveTo(x+r*0.28,y+r*0.82);c.lineTo(x+r*0.35,y+r*1.45);c.stroke();
+  // stick arms
+  c.beginPath();c.moveTo(x-r*0.82,y-r*0.1);c.quadraticCurveTo(x-r*1.05,y+r*0.1,x-r*1.25,y+r*0.05);c.stroke();
+  c.beginPath();c.moveTo(x+r*0.82,y-r*0.1);c.quadraticCurveTo(x+r*1.05,y+r*0.1,x+r*1.25,y+r*0.05);c.stroke();
+  // rounded 5-lobe body (like a puffy starfish shape)
+  c.fillStyle=isIt?'#ffaacc':'#f5a0c0';
+  c.strokeStyle='#2a1f15';c.lineWidth=2.5;
+  c.beginPath();
+  const lobes=5;
+  for(let i=0;i<lobes;i++){
+    const aOuter=-Math.PI/2+i*(Math.PI*2/lobes);
+    const aInner=aOuter+Math.PI/lobes;
+    const ox=x+Math.cos(aOuter)*r, oy=y+Math.sin(aOuter)*r;
+    const ix=x+Math.cos(aInner)*r*0.58, iy=y+Math.sin(aInner)*r*0.58;
+    if(i===0) c.moveTo(ox,oy); else c.quadraticCurveTo(ix,iy,ox,oy);
+    const aNext=-Math.PI/2+(i+1)*(Math.PI*2/lobes);
+    const ixN=x+Math.cos(aInner)*r*0.58, iyN=y+Math.sin(aInner)*r*0.58;
+    c.quadraticCurveTo(ixN,iyN,x+Math.cos(aNext)*r,y+Math.sin(aNext)*r);
+  }
+  c.closePath();c.fill();c.stroke();
+  // green shorts on lower portion (clip to lower half of body)
+  c.fillStyle='#7ac74f';
+  c.save();
+  c.beginPath();c.rect(x-r*1.2,y+r*0.05,r*2.4,r*1.1);c.clip();
+  c.beginPath();
+  for(let i=0;i<lobes;i++){
+    const aOuter=-Math.PI/2+i*(Math.PI*2/lobes);
+    const aInner=aOuter+Math.PI/lobes;
+    const ox=x+Math.cos(aOuter)*r, oy=y+Math.sin(aOuter)*r;
+    const aNext=-Math.PI/2+(i+1)*(Math.PI*2/lobes);
+    if(i===0) c.moveTo(ox,oy); else c.quadraticCurveTo(x+Math.cos(aInner)*r*0.58,y+Math.sin(aInner)*r*0.58,ox,oy);
+    c.quadraticCurveTo(x+Math.cos(aInner)*r*0.58,y+Math.sin(aInner)*r*0.58,x+Math.cos(aNext)*r,y+Math.sin(aNext)*r);
+  }
   c.closePath();c.fill();c.restore();
   // purple polka dots on shorts
-  c.fillStyle='rgba(130,60,200,0.7)';
-  for(const [px,py] of [[-0.35,0.35],[0.35,0.35],[0,0.55],[-0.6,0.15],[0.6,0.15]]){
-    c.beginPath();c.arc(x+r*px,y+r*py,r*0.1,0,Math.PI*2);c.fill();
+  c.fillStyle='#9b59b6';
+  for(const [px,py] of [[-0.32,0.38],[0.32,0.38],[0.02,0.6],[-0.55,0.18],[0.55,0.18]]){
+    c.beginPath();c.arc(x+r*px,y+r*py,r*0.09,0,Math.PI*2);c.fill();
   }
-  // eyes
-  const eyeR=r*0.3;
-  const eyeOffY=y-r*0.25;
-  c.fillStyle='#fff';c.strokeStyle='#333';c.lineWidth=1;
-  c.beginPath();c.arc(x-eyeR*0.85,eyeOffY,eyeR,0,Math.PI*2);c.fill();c.stroke();
-  c.beginPath();c.arc(x+eyeR*0.85,eyeOffY,eyeR,0,Math.PI*2);c.fill();c.stroke();
-  const ex=fdx*eyeR*0.35, ey=fdy*eyeR*0.35;
-  c.fillStyle='#111';
-  c.beginPath();c.arc(x-eyeR*0.85+ex,eyeOffY+ey,eyeR*0.5,0,Math.PI*2);c.fill();
-  c.beginPath();c.arc(x+eyeR*0.85+ex,eyeOffY+ey,eyeR*0.5,0,Math.PI*2);c.fill();
-}
-
-// Plankton: green oval, one big central eye, antennae, stick legs, pink spots
-function drawPlankton(c,x,y,r,fdx,fdy,isIt){
-  // shadow
-  c.fillStyle='rgba(0,0,0,0.3)';
-  c.beginPath();c.ellipse(x+2,y+r*0.8,r*0.65,r*0.25,0,0,Math.PI*2);c.fill();
-  // legs
-  c.strokeStyle='#333';c.lineWidth=r*0.17;c.lineCap='round';
-  c.beginPath();c.moveTo(x-r*0.25,y+r*0.7);c.lineTo(x-r*0.4,y+r*1.45);c.stroke();
-  c.beginPath();c.moveTo(x+r*0.25,y+r*0.7);c.lineTo(x+r*0.4,y+r*1.45);c.stroke();
-  // antennae
-  c.lineWidth=r*0.13;
-  c.beginPath();c.moveTo(x-r*0.2,y-r*0.75);c.lineTo(x-r*0.35,y-r*1.5);c.stroke();
-  c.beginPath();c.moveTo(x+r*0.2,y-r*0.75);c.lineTo(x+r*0.35,y-r*1.5);c.stroke();
-  // antennae tips
-  c.fillStyle='#6abf47';
-  c.beginPath();c.arc(x-r*0.35,y-r*1.5,r*0.1,0,Math.PI*2);c.fill();
-  c.beginPath();c.arc(x+r*0.35,y-r*1.5,r*0.1,0,Math.PI*2);c.fill();
-  // body (oval)
-  c.fillStyle=isIt?'#88e850':'#6abf47';
-  c.strokeStyle=isIt?'#ff1744':'#3a8020';
-  c.lineWidth=isIt?2.5:1.5;
-  c.beginPath();c.ellipse(x,y,r*0.85,r,0,0,Math.PI*2);c.fill();c.stroke();
-  // pink polka dots
-  c.fillStyle='rgba(255,160,160,0.55)';
-  for(const [px,py] of [[-0.5,0.1],[0.5,0.1],[0.1,0.5],[-0.4,-0.45],[0.4,-0.45]]){
-    c.beginPath();c.arc(x+r*px,y+r*py,r*0.11,0,Math.PI*2);c.fill();
-  }
-  // big single eye
-  const eyeR=r*0.42;
-  c.fillStyle='#fff';c.strokeStyle='#333';c.lineWidth=1.5;
-  c.beginPath();c.arc(x,y-r*0.12,eyeR,0,Math.PI*2);c.fill();c.stroke();
-  // yellow iris
-  const ex=fdx*eyeR*0.3, ey=fdy*eyeR*0.3;
-  c.fillStyle='#e8d030';
-  c.beginPath();c.arc(x+ex,y-r*0.12+ey,eyeR*0.68,0,Math.PI*2);c.fill();
-  // slit pupil
-  c.fillStyle='#111';
-  c.save();c.translate(x+ex,y-r*0.12+ey);c.rotate(Math.PI*0.08);
-  c.beginPath();c.ellipse(0,0,eyeR*0.18,eyeR*0.5,0,0,Math.PI*2);c.fill();c.restore();
-  // eyelid outline
-  c.strokeStyle='#333';c.lineWidth=1;
-  c.beginPath();c.arc(x,y-r*0.12,eyeR,0,Math.PI*2);c.stroke();
-  // smile
-  c.strokeStyle='#2a6010';c.lineWidth=r*0.13;
-  c.beginPath();c.arc(x,y+r*0.35,r*0.28,0.15,Math.PI-0.15);c.stroke();
-}
-
-// Squid: teal blob body, grumpy half-closed eyes, droopy nose, sailor hat
-function drawSquid(c,x,y,r,fdx,fdy,isIt){
-  // shadow
-  c.fillStyle='rgba(0,0,0,0.3)';
-  c.beginPath();c.ellipse(x+2,y+r*1.1,r*0.7,r*0.28,0,0,Math.PI*2);c.fill();
-  // tentacles
-  c.strokeStyle=isIt?'#3aa8a0':'#2a8880';
-  c.lineWidth=r*0.22;c.lineCap='round';
-  const tAngles=[-0.55,-0.2,0.2,0.55];
-  tAngles.forEach(a=>{
-    const tx=x+Math.sin(a)*r*0.6;
-    const ty=y+r*0.85;
-    c.beginPath();
-    c.moveTo(tx,ty);
-    c.quadraticCurveTo(tx+Math.sin(a)*r*0.5,ty+r*0.7,tx+Math.sin(a)*r*0.3,ty+r*1.1);
-    c.stroke();
-  });
-  // body (bulbous blob)
-  c.fillStyle=isIt?'#5ce8e0':'#4eccc4';
-  c.strokeStyle=isIt?'#ff1744':'#2a9090';
-  c.lineWidth=isIt?2.5:1.5;
-  c.beginPath();
-  c.ellipse(x,y-r*0.1,r*0.95,r*1.05,0,0,Math.PI*2);
-  c.fill();c.stroke();
-  // nose (drooping oval)
-  c.fillStyle='#f5a080';c.strokeStyle='#c06040';c.lineWidth=1;
-  c.beginPath();c.ellipse(x,y+r*0.25,r*0.12,r*0.32,0,0,Math.PI*2);c.fill();c.stroke();
-  // grumpy eyes (half-closed)
+  // eyes: big white circles, cross-eyed pupils
   const eyeR=r*0.28;
-  const eyeOffY=y-r*0.2;
-  c.fillStyle='#fff';c.strokeStyle='#333';c.lineWidth=1;
-  c.beginPath();c.arc(x-eyeR*1.1,eyeOffY,eyeR,0,Math.PI*2);c.fill();c.stroke();
-  c.beginPath();c.arc(x+eyeR*1.1,eyeOffY,eyeR,0,Math.PI*2);c.fill();c.stroke();
-  const ex=fdx*eyeR*0.35, ey2=fdy*eyeR*0.35;
+  const eyeY=y-r*0.22;
+  const eLX=x-eyeR*0.95, eRX=x+eyeR*0.95;
+  c.fillStyle='#fff';c.strokeStyle='#2a1f15';c.lineWidth=1.5;
+  c.beginPath();c.arc(eLX,eyeY,eyeR,0,Math.PI*2);c.fill();c.stroke();
+  c.beginPath();c.arc(eRX,eyeY,eyeR,0,Math.PI*2);c.fill();c.stroke();
   c.fillStyle='#111';
-  c.beginPath();c.arc(x-eyeR*1.1+ex,eyeOffY+ey2,eyeR*0.5,0,Math.PI*2);c.fill();
-  c.beginPath();c.arc(x+eyeR*1.1+ex,eyeOffY+ey2,eyeR*0.5,0,Math.PI*2);c.fill();
-  // eyelid droops (grumpy half-lid)
-  c.fillStyle=isIt?'#5ce8e0':'#4eccc4';
-  c.beginPath();c.arc(x-eyeR*1.1,eyeOffY-eyeR*0.1,eyeR*1.05,Math.PI,0);c.fill();
-  c.beginPath();c.arc(x+eyeR*1.1,eyeOffY-eyeR*0.1,eyeR*1.05,Math.PI,0);c.fill();
-  // sailor hat
-  const hatY=y-r-r*0.18;
-  // brim
-  c.fillStyle='#fff';c.strokeStyle='#ccc';c.lineWidth=1;
-  c.beginPath();c.ellipse(x,hatY,r*0.85,r*0.2,0,0,Math.PI*2);c.fill();c.stroke();
-  // hat body
-  c.fillStyle='#fff';c.strokeStyle='#aaa';c.lineWidth=1;
-  c.beginPath();
-  c.rect(x-r*0.55,hatY-r*0.55,r*1.1,r*0.58);
-  c.fill();c.stroke();
-  // hat band
-  c.fillStyle='#222266';
-  c.fillRect(x-r*0.55,hatY-r*0.18,r*1.1,r*0.16);
-  // anchor symbol on hat
-  c.strokeStyle='#222266';c.lineWidth=r*0.09;c.lineCap='round';
-  const hx=x,hy=hatY-r*0.38;
-  c.beginPath();c.moveTo(hx,hy-r*0.16);c.lineTo(hx,hy+r*0.16);c.stroke();
-  c.beginPath();c.arc(hx,hy-r*0.1,r*0.1,0,Math.PI*2);c.stroke();
-  c.beginPath();c.moveTo(hx-r*0.14,hy+r*0.16);c.quadraticCurveTo(hx-r*0.18,hy,hx-r*0.04,hy-r*0.04);c.stroke();
-  c.beginPath();c.moveTo(hx+r*0.14,hy+r*0.16);c.quadraticCurveTo(hx+r*0.18,hy,hx+r*0.04,hy-r*0.04);c.stroke();
+  c.save();c.translate(eLX+eyeR*0.36,eyeY+r*0.03);c.rotate(0.28);
+  c.beginPath();c.ellipse(0,0,eyeR*0.28,eyeR*0.4,0,0,Math.PI*2);c.fill();c.restore();
+  c.save();c.translate(eRX-eyeR*0.36,eyeY+r*0.03);c.rotate(-0.28);
+  c.beginPath();c.ellipse(0,0,eyeR*0.28,eyeR*0.4,0,0,Math.PI*2);c.fill();c.restore();
 }
 
-// Hamster: brown round body, huge square teeth, round eyes, pink cheeks, round ears
+// Plankton: green oval, ONE giant eye with yellow iris + vertical slit pupil, stubby antennae, stick limbs
+function drawPlankton(c,x,y,r,fdx,fdy,isIt){
+  // thin stick legs
+  c.strokeStyle='#222';c.lineWidth=2;c.lineCap='round';
+  c.beginPath();c.moveTo(x-r*0.22,y+r*0.78);c.lineTo(x-r*0.3,y+r*1.42);c.stroke();
+  c.beginPath();c.moveTo(x+r*0.22,y+r*0.78);c.lineTo(x+r*0.3,y+r*1.42);c.stroke();
+  // tiny stick arms
+  c.beginPath();c.moveTo(x-r*0.72,y+r*0.1);c.quadraticCurveTo(x-r*0.95,y+r*0.25,x-r*1.08,y+r*0.12);c.stroke();
+  c.beginPath();c.moveTo(x+r*0.72,y+r*0.1);c.quadraticCurveTo(x+r*0.95,y+r*0.25,x+r*1.08,y+r*0.12);c.stroke();
+  // stubby antennae (curved bumps at top)
+  c.strokeStyle='#2a1f15';c.lineWidth=2;
+  c.beginPath();c.moveTo(x-r*0.18,y-r*0.82);c.quadraticCurveTo(x-r*0.32,y-r*1.08,x-r*0.22,y-r*1.2);c.stroke();
+  c.beginPath();c.moveTo(x+r*0.18,y-r*0.82);c.quadraticCurveTo(x+r*0.32,y-r*1.08,x+r*0.22,y-r*1.2);c.stroke();
+  // antenna tips (small circles)
+  c.fillStyle='#5db17a';c.strokeStyle='#2a1f15';c.lineWidth=1;
+  c.beginPath();c.arc(x-r*0.22,y-r*1.22,r*0.08,0,Math.PI*2);c.fill();c.stroke();
+  c.beginPath();c.arc(x+r*0.22,y-r*1.22,r*0.08,0,Math.PI*2);c.fill();c.stroke();
+  // oval body (taller than wide)
+  c.fillStyle=isIt?'#7de89a':'#5db17a';
+  c.strokeStyle='#2a1f15';c.lineWidth=2.5;
+  c.beginPath();c.ellipse(x,y+r*0.08,r*0.78,r*0.92,0,0,Math.PI*2);c.fill();c.stroke();
+  // pink polka dots on lower body
+  c.fillStyle='#ff9aa2';
+  for(const [px,py] of [[-0.42,0.42],[0.4,0.35],[0.0,0.62]]){
+    c.beginPath();c.arc(x+r*px,y+r*py,r*0.09,0,Math.PI*2);c.fill();
+  }
+  // GIANT central eye dominating upper face
+  const eyeR=r*0.45;
+  const eyeY=y-r*0.18;
+  const ex=fdx*eyeR*0.25, ey=fdy*eyeR*0.25;
+  c.fillStyle='#fff';c.strokeStyle='#2a1f15';c.lineWidth=2;
+  c.beginPath();c.arc(x,eyeY,eyeR,0,Math.PI*2);c.fill();c.stroke();
+  // yellow iris
+  c.fillStyle='#ffd93d';
+  c.beginPath();c.arc(x+ex,eyeY+ey,eyeR*0.68,0,Math.PI*2);c.fill();
+  // vertical slit pupil
+  c.fillStyle='#111';
+  c.save();c.translate(x+ex,eyeY+ey);
+  c.beginPath();c.ellipse(0,0,eyeR*0.12,eyeR*0.48,0,0,Math.PI*2);c.fill();c.restore();
+  // eye ring
+  c.strokeStyle='#2a1f15';c.lineWidth=1.5;
+  c.beginPath();c.arc(x,eyeY,eyeR,0,Math.PI*2);c.stroke();
+}
+
+// Squid: teal teardrop body, grumpy heavy-lidded eyes, droopy same-color nose, sailor hat with anchor
+function drawSquid(c,x,y,r,fdx,fdy,isIt){
+  const bodyColor=isIt?'#7aede8':'#5dd6d0';
+  // teardrop body (wider at bottom)
+  c.fillStyle=bodyColor;
+  c.strokeStyle='#2a1f15';c.lineWidth=2.5;
+  c.beginPath();
+  c.moveTo(x,y-r*1.05);
+  c.bezierCurveTo(x+r*0.72,y-r*0.85,x+r*0.92,y+r*0.2,x+r*0.85,y+r*0.72);
+  c.bezierCurveTo(x+r*0.6,y+r*1.1,x-r*0.6,y+r*1.1,x-r*0.85,y+r*0.72);
+  c.bezierCurveTo(x-r*0.92,y+r*0.2,x-r*0.72,y-r*0.85,x,y-r*1.05);
+  c.closePath();c.fill();c.stroke();
+  // droopy nose (same body color, curved tube, center of face)
+  c.fillStyle=bodyColor;c.strokeStyle='#2a1f15';c.lineWidth=1.5;
+  c.beginPath();
+  c.moveTo(x-r*0.1,y+r*0.08);
+  c.bezierCurveTo(x-r*0.13,y+r*0.28,x-r*0.1,y+r*0.48,x,y+r*0.52);
+  c.bezierCurveTo(x+r*0.1,y+r*0.48,x+r*0.13,y+r*0.28,x+r*0.1,y+r*0.08);
+  c.closePath();c.fill();c.stroke();
+  // grumpy eyes: white ovals, heavy upper eyelids
+  const eyeR=r*0.24;
+  const eyeY=y-r*0.28;
+  const eLX=x-r*0.36, eRX=x+r*0.36;
+  c.fillStyle='#fff';c.strokeStyle='#2a1f15';c.lineWidth=1.5;
+  c.beginPath();c.arc(eLX,eyeY,eyeR,0,Math.PI*2);c.fill();c.stroke();
+  c.beginPath();c.arc(eRX,eyeY,eyeR,0,Math.PI*2);c.fill();c.stroke();
+  // pupils
+  const ex=fdx*eyeR*0.3, ey2=fdy*eyeR*0.3;
+  c.fillStyle='#111';
+  c.beginPath();c.arc(eLX+ex,eyeY+ey2,eyeR*0.5,0,Math.PI*2);c.fill();
+  c.beginPath();c.arc(eRX+ex,eyeY+ey2,eyeR*0.5,0,Math.PI*2);c.fill();
+  // heavy drooping upper eyelids (thick arc above each eye)
+  c.strokeStyle='#2a1f15';c.lineWidth=3.5;c.lineCap='round';
+  c.beginPath();c.arc(eLX,eyeY-eyeR*0.08,eyeR*1.1,Math.PI+0.3,-0.3);c.stroke();
+  c.beginPath();c.arc(eRX,eyeY-eyeR*0.08,eyeR*1.1,Math.PI+0.3,-0.3);c.stroke();
+  // small grumpy frown below nose
+  c.strokeStyle='#2a1f15';c.lineWidth=2;
+  c.beginPath();c.arc(x,y+r*0.72,r*0.14,Math.PI+0.3,2*Math.PI-0.3);c.stroke();
+  // WHITE sailor hat on top
+  const hatBaseY=y-r*1.02;
+  // hat brim (wide flat oval)
+  c.fillStyle='#fff';c.strokeStyle='#2a1f15';c.lineWidth=2;
+  c.beginPath();c.ellipse(x,hatBaseY,r*0.82,r*0.18,0,0,Math.PI*2);c.fill();c.stroke();
+  // hat cylinder body
+  c.fillStyle='#fff';c.strokeStyle='#2a1f15';c.lineWidth=2;
+  c.beginPath();
+  c.moveTo(x-r*0.58,hatBaseY);
+  c.lineTo(x-r*0.52,hatBaseY-r*0.55);
+  c.quadraticCurveTo(x,hatBaseY-r*0.65,x+r*0.52,hatBaseY-r*0.55);
+  c.lineTo(x+r*0.58,hatBaseY);
+  c.closePath();c.fill();c.stroke();
+  // hat band (dark blue stripe)
+  c.fillStyle='#1a1a5e';
+  c.save();c.beginPath();c.rect(x-r*0.6,hatBaseY-r*0.22,r*1.2,r*0.16);c.clip();
+  c.fillRect(x-r*0.6,hatBaseY-r*0.22,r*1.2,r*0.16);c.restore();
+  // anchor on hat band
+  const hx=x, hy=hatBaseY-r*0.14;
+  c.strokeStyle='#fff';c.lineWidth=1.5;c.lineCap='round';
+  // anchor vertical line
+  c.beginPath();c.moveTo(hx,hy-r*0.06);c.lineTo(hx,hy+r*0.06);c.stroke();
+  // anchor crossbar
+  c.beginPath();c.moveTo(hx-r*0.06,hy-r*0.02);c.lineTo(hx+r*0.06,hy-r*0.02);c.stroke();
+  // anchor ring (small circle at top)
+  c.beginPath();c.arc(hx,hy-r*0.07,r*0.025,0,Math.PI*2);c.stroke();
+  // anchor curved bottom hook
+  c.beginPath();c.arc(hx-r*0.05,hy+r*0.06,r*0.05,0,Math.PI);c.stroke();
+  c.beginPath();c.arc(hx+r*0.05,hy+r*0.06,r*0.05,0,Math.PI);c.stroke();
+}
+
+// Hamster: brown circle, big round ears, small black eyes, pink cheeks, HUGE square white front teeth
 function drawHamster(c,x,y,r,fdx,fdy,isIt){
-  // shadow
-  c.fillStyle='rgba(0,0,0,0.3)';
-  c.beginPath();c.ellipse(x+2,y+r*0.9,r*0.8,r*0.3,0,0,Math.PI*2);c.fill();
-  // ears
-  c.fillStyle=isIt?'#e8a868':'#c8936a';
-  c.strokeStyle=isIt?'#ff1744':'#8a5a30';
-  c.lineWidth=1.5;
-  c.beginPath();c.arc(x-r*0.62,y-r*0.82,r*0.32,0,Math.PI*2);c.fill();c.stroke();
-  c.beginPath();c.arc(x+r*0.62,y-r*0.82,r*0.32,0,Math.PI*2);c.fill();c.stroke();
-  // inner ear
-  c.fillStyle='rgba(255,160,160,0.6)';
-  c.beginPath();c.arc(x-r*0.62,y-r*0.82,r*0.18,0,Math.PI*2);c.fill();
-  c.beginPath();c.arc(x+r*0.62,y-r*0.82,r*0.18,0,Math.PI*2);c.fill();
-  // body
-  c.fillStyle=isIt?'#e8a868':'#c8936a';
-  c.strokeStyle=isIt?'#ff1744':'#8a5a30';
-  c.lineWidth=isIt?2.5:1.5;
+  // round ears on top
+  c.fillStyle=isIt?'#c89050':'#a87545';
+  c.strokeStyle='#2a1f15';c.lineWidth=2;
+  c.beginPath();c.arc(x-r*0.58,y-r*0.78,r*0.3,0,Math.PI*2);c.fill();c.stroke();
+  c.beginPath();c.arc(x+r*0.58,y-r*0.78,r*0.3,0,Math.PI*2);c.fill();c.stroke();
+  // inner ear pink
+  c.fillStyle='#ffb3c6';
+  c.beginPath();c.arc(x-r*0.58,y-r*0.78,r*0.17,0,Math.PI*2);c.fill();
+  c.beginPath();c.arc(x+r*0.58,y-r*0.78,r*0.17,0,Math.PI*2);c.fill();
+  // round body (full circle)
+  c.fillStyle=isIt?'#c89050':'#a87545';
+  c.strokeStyle='#2a1f15';c.lineWidth=2.5;
   c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.fill();c.stroke();
-  // belly
-  c.fillStyle='rgba(245,210,170,0.6)';
-  c.beginPath();c.ellipse(x,y+r*0.15,r*0.55,r*0.7,0,0,Math.PI*2);c.fill();
-  // eyes
-  const eyeR=r*0.22;
-  const eyeOffY=y-r*0.28;
-  c.fillStyle='#333';
-  c.beginPath();c.arc(x-r*0.35,eyeOffY,eyeR,0,Math.PI*2);c.fill();
-  c.beginPath();c.arc(x+r*0.35,eyeOffY,eyeR,0,Math.PI*2);c.fill();
+  // light belly patch
+  c.fillStyle='rgba(220,185,140,0.5)';
+  c.beginPath();c.ellipse(x,y+r*0.18,r*0.52,r*0.62,0,0,Math.PI*2);c.fill();
+  // small black eyes
+  c.fillStyle='#111';
+  c.beginPath();c.arc(x-r*0.3,y-r*0.3,r*0.07,0,Math.PI*2);c.fill();
+  c.beginPath();c.arc(x+r*0.3,y-r*0.3,r*0.07,0,Math.PI*2);c.fill();
   // eye shine
   c.fillStyle='#fff';
-  c.beginPath();c.arc(x-r*0.35-eyeR*0.3,eyeOffY-eyeR*0.3,eyeR*0.35,0,Math.PI*2);c.fill();
-  c.beginPath();c.arc(x+r*0.35-eyeR*0.3,eyeOffY-eyeR*0.3,eyeR*0.35,0,Math.PI*2);c.fill();
-  // pink cheeks
-  c.fillStyle='rgba(255,130,130,0.5)';
-  c.beginPath();c.ellipse(x-r*0.55,y+r*0.08,r*0.28,r*0.2,0,0,Math.PI*2);c.fill();
-  c.beginPath();c.ellipse(x+r*0.55,y+r*0.08,r*0.28,r*0.2,0,0,Math.PI*2);c.fill();
-  // big square teeth
-  c.fillStyle='#fffce0';
-  c.strokeStyle='#c0b060';c.lineWidth=0.8;
-  c.beginPath();c.roundRect(x-r*0.32,y+r*0.32,r*0.28,r*0.4,2);c.fill();c.stroke();
-  c.beginPath();c.roundRect(x+r*0.04,y+r*0.32,r*0.28,r*0.4,2);c.fill();c.stroke();
-  // tooth divider line
-  c.strokeStyle='#c0b060';c.lineWidth=1;
-  c.beginPath();c.moveTo(x,y+r*0.32);c.lineTo(x,y+r*0.72);c.stroke();
+  c.beginPath();c.arc(x-r*0.32,y-r*0.33,r*0.03,0,Math.PI*2);c.fill();
+  c.beginPath();c.arc(x+r*0.28,y-r*0.33,r*0.03,0,Math.PI*2);c.fill();
+  // pink rosy cheeks (no outline)
+  c.fillStyle='#ff9aa2';
+  c.beginPath();c.arc(x-r*0.52,y-r*0.04,r*0.12,0,Math.PI*2);c.fill();
+  c.beginPath();c.arc(x+r*0.52,y-r*0.04,r*0.12,0,Math.PI*2);c.fill();
+  // TWO HUGE SQUARE FRONT TEETH (dominant lower-face feature)
+  const tW=r*0.38, tH=r*0.36;
+  const tTop=y+r*0.18;
+  // left tooth
+  c.fillStyle='#ffffff';c.strokeStyle='#2a1f15';c.lineWidth=1.8;
+  c.beginPath();c.roundRect(x-tW-r*0.03,tTop,tW,tH,r*0.04);c.fill();c.stroke();
+  // right tooth
+  c.beginPath();c.roundRect(x+r*0.03,tTop,tW,tH,r*0.04);c.fill();c.stroke();
+  // vertical divider line between teeth
+  c.strokeStyle='#2a1f15';c.lineWidth=1.5;
+  c.beginPath();c.moveTo(x,tTop);c.lineTo(x,tTop+tH);c.stroke();
 }
 
 function drawPlayer(p){
