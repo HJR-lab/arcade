@@ -3,81 +3,306 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rivers Arcade</title>
+    <title>RIVERS ARCADE</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --cyan: #00ffff;
+            --magenta: #ff00ea;
+            --pink: #ff6ec7;
+            --yellow: #ffe600;
+            --purple-deep: #0d0221;
+            --purple-mid: #1b033e;
+        }
+
+        html, body { height: 100%; }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: #0a0a0f;
-            color: #e0e0e0;
+            font-family: 'VT323', monospace;
+            color: #f8f8ff;
+            background: var(--purple-deep);
             min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 2rem;
+            overflow-x: hidden;
+            position: relative;
+            padding: 2rem 1.25rem 6rem;
         }
+
+        /* Sunset / sky behind the grid */
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 60% 38% at 50% 48%,
+                    #ff7a18 0%,
+                    #ff2d95 35%,
+                    rgba(255, 45, 149, 0) 70%),
+                linear-gradient(180deg,
+                    #2a0140 0%,
+                    #4a0a6b 30%,
+                    #b3147a 55%,
+                    #ff5c8a 62%,
+                    #1b033e 62.1%,
+                    #0d0221 100%);
+            z-index: -3;
+        }
+
+        /* Perspective grid floor */
+        body::after {
+            content: "";
+            position: fixed;
+            left: 50%;
+            bottom: -10vh;
+            width: 220vw;
+            height: 80vh;
+            transform: translateX(-50%) perspective(420px) rotateX(62deg);
+            transform-origin: 50% 0;
+            background-image:
+                linear-gradient(to right, rgba(0, 255, 255, 0.55) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 0, 234, 0.55) 1px, transparent 1px);
+            background-size: 60px 60px;
+            animation: gridScroll 4s linear infinite;
+            z-index: -2;
+            mask-image: linear-gradient(to bottom, transparent 0%, #000 25%, #000 100%);
+            -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 25%, #000 100%);
+        }
+
+        @keyframes gridScroll {
+            from { background-position: 0 0, 0 0; }
+            to   { background-position: 0 60px, 0 60px; }
+        }
+
+        /* CRT scanlines */
+        .scanlines {
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(
+                to bottom,
+                rgba(0, 0, 0, 0) 0px,
+                rgba(0, 0, 0, 0) 2px,
+                rgba(0, 0, 0, 0.18) 3px,
+                rgba(0, 0, 0, 0) 4px
+            );
+            pointer-events: none;
+            z-index: 50;
+            mix-blend-mode: multiply;
+        }
+
+        /* Vignette */
+        .vignette {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(ellipse at center,
+                transparent 55%,
+                rgba(0, 0, 0, 0.55) 100%);
+            pointer-events: none;
+            z-index: 49;
+        }
+
+        header {
+            text-align: center;
+            margin: 1rem auto 3rem;
+            max-width: 1100px;
+            position: relative;
+            z-index: 1;
+        }
+
         h1 {
-            font-size: 2.5rem;
-            margin-bottom: 0.5rem;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            font-family: 'Press Start 2P', monospace;
+            font-size: clamp(1.6rem, 5.5vw, 3.5rem);
+            letter-spacing: 0.06em;
+            line-height: 1.2;
+            color: #fff7a8;
+            text-shadow:
+                0 0 6px #fff,
+                3px 3px 0 #ff00ea,
+                6px 6px 0 #00ffff,
+                0 0 22px rgba(255, 0, 234, 0.7),
+                0 0 40px rgba(0, 255, 255, 0.55);
+            animation: flicker 4s infinite;
         }
-        .subtitle {
-            color: #888;
-            margin-bottom: 2rem;
+
+        @keyframes flicker {
+            0%, 92%, 100% { opacity: 1; }
+            93% { opacity: 0.72; }
+            94% { opacity: 1; }
+            96% { opacity: 0.55; }
+            97% { opacity: 1; }
         }
+
+        .tagline {
+            margin-top: 1.25rem;
+            font-size: clamp(1.1rem, 2.4vw, 1.6rem);
+            letter-spacing: 0.35em;
+            color: var(--cyan);
+            text-shadow: 0 0 8px var(--cyan), 0 0 16px rgba(0, 255, 255, 0.5);
+        }
+
+        .blink::after {
+            content: "_";
+            display: inline-block;
+            margin-left: 0.25rem;
+            animation: blink 1s steps(2, start) infinite;
+        }
+        @keyframes blink { to { visibility: hidden; } }
+
+        .insert-coin {
+            margin-top: 1rem;
+            font-size: 1rem;
+            letter-spacing: 0.5em;
+            color: var(--yellow);
+            text-shadow: 0 0 6px var(--yellow);
+        }
+
+        main {
+            position: relative;
+            z-index: 1;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
         .games-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
             gap: 1.5rem;
-            max-width: 900px;
-            width: 100%;
         }
+
         .game-card {
-            background: #1a1a2e;
-            border: 1px solid #2a2a4a;
-            border-radius: 12px;
-            padding: 1.5rem;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 200px;
+            padding: 1.5rem 1.25rem 1.25rem;
             text-decoration: none;
             color: inherit;
-            transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+            background: linear-gradient(180deg,
+                rgba(20, 0, 40, 0.85) 0%,
+                rgba(40, 0, 70, 0.85) 100%);
+            border: 2px solid var(--cyan);
+            box-shadow:
+                0 0 0 2px rgba(0, 255, 255, 0.15) inset,
+                0 0 14px rgba(0, 255, 255, 0.45),
+                0 0 28px rgba(0, 255, 255, 0.2);
+            clip-path: polygon(
+                0 12px, 12px 0,
+                calc(100% - 12px) 0, 100% 12px,
+                100% calc(100% - 12px), calc(100% - 12px) 100%,
+                12px 100%, 0 calc(100% - 12px)
+            );
+            transition: transform 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
         }
+
+        .game-card:nth-child(2n) {
+            border-color: var(--magenta);
+            box-shadow:
+                0 0 0 2px rgba(255, 0, 234, 0.15) inset,
+                0 0 14px rgba(255, 0, 234, 0.5),
+                0 0 28px rgba(255, 0, 234, 0.22);
+        }
+        .game-card:nth-child(3n) {
+            border-color: var(--yellow);
+            box-shadow:
+                0 0 0 2px rgba(255, 230, 0, 0.15) inset,
+                0 0 14px rgba(255, 230, 0, 0.45),
+                0 0 28px rgba(255, 230, 0, 0.2);
+        }
+
         .game-card:hover {
-            transform: translateY(-4px);
-            border-color: #667eea;
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+            transform: translateY(-4px) scale(1.015);
+            box-shadow:
+                0 0 0 2px currentColor inset,
+                0 0 22px currentColor,
+                0 0 50px currentColor;
         }
+        .game-card:nth-child(1n) { color: var(--cyan); }
+        .game-card:nth-child(2n) { color: var(--magenta); }
+        .game-card:nth-child(3n) { color: var(--yellow); }
+
         .game-card h2 {
-            font-size: 1.3rem;
-            margin-bottom: 0.5rem;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.95rem;
+            line-height: 1.45;
             color: #fff;
+            text-shadow: 0 0 8px currentColor;
+            margin-bottom: 0.75rem;
         }
+
         .game-card p {
-            color: #999;
-            font-size: 0.9rem;
+            font-size: 1.2rem;
+            color: #e6d8ff;
+            opacity: 0.85;
+            margin-bottom: 1rem;
+            flex-grow: 1;
         }
-        .game-card .play-btn {
-            display: inline-block;
-            margin-top: 1rem;
-            padding: 0.4rem 1rem;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            border-radius: 6px;
-            font-size: 0.85rem;
-            color: #fff;
+
+        .play-btn {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.75rem;
+            letter-spacing: 0.12em;
+            color: #0d0221;
+            background: currentColor;
+            padding: 0.7rem 1rem;
+            text-align: center;
+            align-self: flex-start;
+            box-shadow: 0 0 10px currentColor;
+        }
+
+        .play-btn span { color: #0d0221; }
+
+        .game-card:hover .play-btn { animation: btnBlink 0.5s steps(2, start) infinite; }
+        @keyframes btnBlink { 50% { filter: brightness(1.4); } }
+
+        footer {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            margin-top: 4rem;
+            font-size: 1.1rem;
+            color: var(--pink);
+            text-shadow: 0 0 6px var(--pink);
+            letter-spacing: 0.2em;
+        }
+
+        .loading {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.9rem;
+            text-align: center;
+            color: var(--cyan);
+            grid-column: 1 / -1;
+            padding: 2rem;
+            text-shadow: 0 0 8px var(--cyan);
         }
     </style>
 </head>
 <body>
-    <h1>Rivers Arcade</h1>
-    <p class="subtitle">Choose a game to play</p>
-    <div class="games-grid" id="games-grid"></div>
+    <div class="scanlines"></div>
+    <div class="vignette"></div>
+
+    <header>
+        <h1>RIVERS ARCADE</h1>
+        <p class="tagline blink">SELECT YOUR GAME</p>
+        <p class="insert-coin">&#9670; INSERT COIN &#9670;</p>
+    </header>
+
+    <main>
+        <div class="games-grid" id="games-grid">
+            <div class="loading">LOADING<span class="blink"></span></div>
+        </div>
+    </main>
+
+    <footer>&#9632; HIGH SCORE: &#8734; &#9632; EST. 198X &#9632;</footer>
 
     <script>
         fetch('games.json')
             .then(r => r.json())
             .then(games => {
                 const grid = document.getElementById('games-grid');
+                grid.innerHTML = '';
                 games.forEach(game => {
                     const card = document.createElement('a');
                     card.href = 'games/' + game.id + '/index.html';
@@ -85,19 +310,28 @@
 
                     const title = document.createElement('h2');
                     title.textContent = game.name;
+                    card.appendChild(title);
 
-                    const desc = document.createElement('p');
-                    desc.textContent = game.description;
+                    if (game.description) {
+                        const desc = document.createElement('p');
+                        desc.textContent = game.description;
+                        card.appendChild(desc);
+                    } else {
+                        const spacer = document.createElement('p');
+                        card.appendChild(spacer);
+                    }
 
                     const btn = document.createElement('span');
                     btn.className = 'play-btn';
-                    btn.textContent = 'Play';
-
-                    card.appendChild(title);
-                    card.appendChild(desc);
+                    btn.textContent = 'PRESS START';
                     card.appendChild(btn);
+
                     grid.appendChild(card);
                 });
+            })
+            .catch(() => {
+                document.getElementById('games-grid').innerHTML =
+                    '<div class="loading">ERROR LOADING GAMES</div>';
             });
     </script>
 </body>
