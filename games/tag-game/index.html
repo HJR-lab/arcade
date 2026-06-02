@@ -8,7 +8,7 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0f0f1a;--card:#1a1a2e;--accent:#2d6cdf;--accent2:#0f3460;
+  --bg:#0f0f1a;--card:#1a1a2e;--accent:#1f8fff;--accent2:#0f3460;
   --win:#00c853;--lose:#ff1744;--draw:#ffd600;--text:#eee;--muted:#888;
 }
 body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);
@@ -41,7 +41,7 @@ select.field-input{cursor:pointer}
 
 /* Buttons */
 .btn{padding:11px 28px;border:none;border-radius:24px;font-size:.95rem;cursor:pointer;font-weight:600;transition:all .2s}
-.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{filter:brightness(1.15)}
+.btn-primary{background:var(--accent);color:#fff;box-shadow:0 0 14px rgba(31,143,255,.6)}.btn-primary:hover{filter:brightness(1.15);box-shadow:0 0 20px rgba(31,143,255,.85)}
 .btn-secondary{background:#333;color:var(--text)}.btn-secondary:hover{background:#444}
 .btn-success{background:var(--win);color:#111}.btn-success:hover{filter:brightness(1.1)}
 .btn-small{padding:7px 18px;font-size:.82rem;border-radius:16px}
@@ -67,7 +67,7 @@ select.field-input{cursor:pointer}
 
 /* HUD */
 #hud{display:flex;justify-content:flex-start;align-items:center;width:100%;max-width:900px;padding:8px 4px;flex-wrap:wrap;gap:8px}
-.hud-timer{font-size:1.8rem;font-weight:900;color:var(--accent);letter-spacing:2px;min-width:56px}
+.hud-timer{font-size:1.8rem;font-weight:900;color:var(--accent);letter-spacing:2px;min-width:56px;text-shadow:0 0 10px rgba(31,143,255,.75)}
 .hud-timer.urgent{animation:timerPulse .4s ease infinite alternate;color:var(--lose)}
 .hud-info{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .hud-pill{padding:4px 12px;border-radius:20px;background:var(--card);border:2px solid #333;font-size:.8rem;font-weight:600}
@@ -75,7 +75,7 @@ select.field-input{cursor:pointer}
 .hud-pill.spectate{border-color:var(--draw);color:var(--draw)}
 
 /* Tag flash */
-#tagFlash{position:fixed;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:50;opacity:0;background:rgba(45,108,223,.25);transition:opacity .1s}
+#tagFlash{position:fixed;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:50;opacity:0;background:rgba(31,143,255,.25);transition:opacity .1s}
 
 /* Elimination flash overlay */
 #elimFlash{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.82);z-index:110;align-items:center;justify-content:center;backdrop-filter:blur(8px);flex-direction:column;gap:12px}
@@ -124,8 +124,8 @@ select.field-input{cursor:pointer}
 /* Mobile touch joystick */
 #touchJoystick{position:fixed;left:max(18px,env(safe-area-inset-left));bottom:max(20px,env(safe-area-inset-bottom));z-index:70;display:none;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
 #touchJoystick.active{display:block}
-#joyBase{width:130px;height:130px;border-radius:50%;background:rgba(26,26,46,.5);border:2px solid rgba(45,108,223,.5);position:relative;backdrop-filter:blur(2px)}
-#joyKnob{width:58px;height:58px;border-radius:50%;background:rgba(45,108,223,.85);border:2px solid rgba(255,255,255,.85);position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;box-shadow:0 2px 10px rgba(0,0,0,.45)}
+#joyBase{width:130px;height:130px;border-radius:50%;background:rgba(26,26,46,.5);border:2px solid rgba(31,143,255,.5);position:relative;backdrop-filter:blur(2px)}
+#joyKnob{width:58px;height:58px;border-radius:50%;background:rgba(31,143,255,.85);border:2px solid rgba(255,255,255,.85);position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;box-shadow:0 2px 10px rgba(0,0,0,.45)}
 
 @media(max-width:600px){
   h1{font-size:1.8rem}
@@ -921,7 +921,7 @@ function render(){
   // Draw timer warning overlay when under 5s
   if(roundTimer <= 5 && gameState === 'playing'){
     const alpha = (1 - roundTimer/5) * 0.12 * (Math.sin(performance.now()/120)+1);
-    ctx.fillStyle = `rgba(45,108,223,${alpha})`;
+    ctx.fillStyle = `rgba(31,143,255,${alpha})`;
     ctx.fillRect(0,0,CANVAS_W,CANVAS_H);
   }
 
@@ -1276,8 +1276,8 @@ function drawPlayer(p){
   if(p.isIt){
     const pulse = 0.7 + 0.3*Math.sin(performance.now()/180);
     const grd = ctx.createRadialGradient(x,y,r*0.5,x,y,r*2.8);
-    grd.addColorStop(0,`rgba(45,108,223,${0.55*pulse})`);
-    grd.addColorStop(1,'rgba(45,108,223,0)');
+    grd.addColorStop(0,`rgba(31,143,255,${0.55*pulse})`);
+    grd.addColorStop(1,'rgba(31,143,255,0)');
     ctx.fillStyle = grd;
     ctx.beginPath();
     ctx.arc(x,y,r*2.8,0,Math.PI*2);
@@ -1305,7 +1305,7 @@ function drawPlayer(p){
   const tw = ctx.measureText(p.name).width;
   ctx.fillStyle = 'rgba(0,0,0,0.6)';
   ctx.fillRect(x-tw/2-3, nameY-13, tw+6, 14);
-  ctx.fillStyle = p.isIt ? '#6f9bff' : '#eee';
+  ctx.fillStyle = p.isIt ? '#66c6ff' : '#eee';
   ctx.fillText(p.name, x, nameY);
 
   // IT badge above name
@@ -1314,7 +1314,7 @@ function drawPlayer(p){
     ctx.textBaseline = 'middle';
     const bw=28, bh=16;
     const badgeCy = y - labelOffY - 20;
-    ctx.fillStyle = '#2d6cdf';
+    ctx.fillStyle = '#1f8fff';
     ctx.beginPath();
     ctx.roundRect(x - bw/2, badgeCy - bh/2, bw, bh, 4);
     ctx.fill();
