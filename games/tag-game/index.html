@@ -121,6 +121,12 @@ select.field-input{cursor:pointer}
 /* Tagged label on canvas */
 .tagged-label{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:2rem;font-weight:900;color:var(--lose);pointer-events:none;text-shadow:0 0 20px rgba(255,23,68,.8);animation:taggedAnim 1.2s ease forwards;z-index:60}
 
+/* Mobile touch joystick */
+#touchJoystick{position:fixed;left:max(18px,env(safe-area-inset-left));bottom:max(20px,env(safe-area-inset-bottom));z-index:70;display:none;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
+#touchJoystick.active{display:block}
+#joyBase{width:130px;height:130px;border-radius:50%;background:rgba(26,26,46,.5);border:2px solid rgba(233,69,96,.5);position:relative;backdrop-filter:blur(2px)}
+#joyKnob{width:58px;height:58px;border-radius:50%;background:rgba(233,69,96,.85);border:2px solid rgba(255,255,255,.85);position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;box-shadow:0 2px 10px rgba(0,0,0,.45)}
+
 @media(max-width:600px){
   h1{font-size:1.8rem}
   .round-end-card{padding:24px 20px}
@@ -278,6 +284,11 @@ select.field-input{cursor:pointer}
 </div><!-- /container -->
 
 <div id="tagFlash"></div>
+
+<!-- MOBILE TOUCH JOYSTICK -->
+<div id="touchJoystick">
+  <div id="joyBase"><div id="joyKnob"></div></div>
+</div>
 
 <script>
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -467,6 +478,7 @@ function initGame(){
 
   setupCanvas();
   updateHUD();
+  showJoystick(true);
 
   if(rafId) cancelAnimationFrame(rafId);
   lastTime = performance.now();
@@ -599,7 +611,13 @@ function readLocalInput(){
   if(keys['a']||keys['arrowleft']) localDx -= 1;
   if(keys['d']||keys['arrowright']) localDx += 1;
   const len = Math.hypot(localDx, localDy);
-  if(len > 0){localDx/=len;localDy/=len;}
+  if(len > 0){
+    // Keyboard takes priority; normalize to a unit vector.
+    localDx/=len; localDy/=len;
+  } else if(joyActive){
+    // Virtual joystick: analog magnitude already clamped to 0..1.
+    localDx = joyDx; localDy = joyDy;
+  }
 }
 
 // ─── Elimination ─────────────────────────────────────────────────────────────
@@ -665,6 +683,7 @@ function endGame(){
   gameState = 'gameover';
   if(rafId){cancelAnimationFrame(rafId);rafId=null;}
   document.getElementById('elimFlash').classList.remove('active');
+  showJoystick(false);
 
   // Build final results: survivor is #1, then eliminated in reverse order (last eliminated = #2)
   const results = [];
@@ -1342,6 +1361,7 @@ function goToMenu(){
   document.getElementById('menuScreen').classList.remove('hidden');
   document.getElementById('elimFlash').classList.remove('active');
   document.getElementById('elimPanel').innerHTML = '';
+  showJoystick(false);
   gameState = 'menu';
   if(rafId){cancelAnimationFrame(rafId);rafId=null;}
   if(peer){peer.destroy();peer=null;}
@@ -1358,6 +1378,80 @@ document.addEventListener('keydown',e=>{
 });
 document.addEventListener('keyup',e=>{ keys[e.key.toLowerCase()]=false; });
 window.addEventListener('blur',()=>{ Object.keys(keys).forEach(k=>keys[k]=false); });
+
+// ─── Mobile touch joystick ────────────────────────────────────────────────────
+let joyActive = false, joyDx = 0, joyDy = 0, joyTouchId = null;
+const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+const JOY_MAX_R = 44;        // max knob travel in px
+const JOY_DEADZONE = 0.12;   // ignore tiny wobble
+
+function joySetKnob(dx, dy){
+  const k = document.getElementById('joyKnob');
+  if(k) k.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+}
+
+function joyReset(){
+  joyActive = false; joyDx = 0; joyDy = 0; joyTouchId = null;
+  joySetKnob(0, 0);
+}
+
+function joyUpdateFromPoint(clientX, clientY){
+  const base = document.getElementById('joyBase');
+  if(!base) return;
+  const rect = base.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  const dx = clientX - cx, dy = clientY - cy;
+  const len = Math.hypot(dx, dy);
+  const clamped = Math.min(len, JOY_MAX_R);
+  let kx = 0, ky = 0;
+  if(len > 0){ kx = dx / len * clamped; ky = dy / len * clamped; }
+  joySetKnob(kx, ky);
+  joyDx = kx / JOY_MAX_R;
+  joyDy = ky / JOY_MAX_R;
+  joyActive = Math.hypot(joyDx, joyDy) > JOY_DEADZONE;
+}
+
+function showJoystick(show){
+  const joy = document.getElementById('touchJoystick');
+  if(!joy) return;
+  joy.classList.toggle('active', !!show && isTouchDevice);
+  if(!show) joyReset();
+}
+
+function setupJoystick(){
+  if(isTouchDevice) document.body.classList.add('touch-device');
+  const base = document.getElementById('joyBase');
+  if(!base) return;
+
+  base.addEventListener('touchstart', e=>{
+    e.preventDefault();
+    if(joyTouchId !== null) return;     // already tracking a finger
+    const t = e.changedTouches[0];
+    joyTouchId = t.identifier;
+    joyUpdateFromPoint(t.clientX, t.clientY);
+  }, {passive:false});
+
+  // Track move/end on window so the finger can drag beyond the base.
+  window.addEventListener('touchmove', e=>{
+    if(joyTouchId === null) return;
+    for(const t of e.changedTouches){
+      if(t.identifier === joyTouchId){
+        e.preventDefault();
+        joyUpdateFromPoint(t.clientX, t.clientY);
+      }
+    }
+  }, {passive:false});
+
+  function endTouch(e){
+    if(joyTouchId === null) return;
+    for(const t of e.changedTouches){
+      if(t.identifier === joyTouchId){ joyReset(); }
+    }
+  }
+  window.addEventListener('touchend', endTouch);
+  window.addEventListener('touchcancel', endTouch);
+}
 
 // ─── Online / PeerJS ─────────────────────────────────────────────────────────
 function createRoom(){
@@ -1681,6 +1775,7 @@ window.addEventListener('resize',()=>{
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 setMode('solo');
+setupJoystick();
 </script>
 </body>
 </html>
