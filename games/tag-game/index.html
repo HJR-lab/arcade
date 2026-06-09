@@ -501,6 +501,7 @@ function initGame(){
   gameState = 'playing';
   roundTimer = roundDuration;
   frameShake = 0;
+  bombFx.active = false;
   betweenTimer = 0;
   pendingElimId = null;
   document.getElementById('statusMsg').textContent = '';
@@ -889,6 +890,7 @@ function movePlayers(dt){
 }
 
 function checkTags(){
+  if(bomb.state !== 'held') return;   // can only hand off the bomb by contact while holding it
   const itPlayer = getPlayer(itPlayerId);
   if(!itPlayer) return;
   players.forEach(p=>{
@@ -1261,6 +1263,7 @@ function setupBombControls(){
     cv.addEventListener('mouseleave', ()=>{ mouseAimActive=false; });
     cv.addEventListener('mousedown', e=>{
       if(e.button!==0 || gameState!=='playing' || !localIsIt()) return;
+      e.preventDefault();
       const it = getPlayer(localPlayerId); if(!it) return;
       const rect = cv.getBoundingClientRect();
       const gx = (e.clientX-rect.left)*CANVAS_W/rect.width;
@@ -1315,6 +1318,17 @@ function render(){
   drawTrajectory();
   drawBomb();
   drawBombFx();
+
+  // Bomb hint for the local "It" player
+  if(gameState === 'playing' && localIsIt() && bomb.state === 'held'){
+    ctx.font = 'bold 13px Segoe UI,sans-serif';
+    ctx.fillStyle = 'rgba(42,147,240,0.92)';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText(isTouchDevice ? 'You’re IT! Aim with the right stick or tap THROW'
+                               : 'You’re IT! Aim with the mouse · click / Space / F to throw the bomb',
+                 CANVAS_W/2, 8);
+  }
 
   // Spectator mode overlay hint
   if(localSpectating && gameState === 'playing'){
@@ -1766,8 +1780,10 @@ document.addEventListener('keydown',e=>{
   if(e.key===' '&&gameState==='menu') startSoloGame();
   if((e.key==='f'||e.key==='F'||e.key===' ')&&gameState==='playing'){
     e.preventDefault();
-    if(mouseAimActive) doThrowLocal(mouseAimDx, mouseAimDy);
-    else doThrowLocal(0, 0);
+    if(!e.repeat){
+      if(mouseAimActive) doThrowLocal(mouseAimDx, mouseAimDy);
+      else doThrowLocal(0, 0);
+    }
   }
   if(e.key==='Escape'&&(gameState==='playing'||gameState==='between')) goToMenu();
 });
