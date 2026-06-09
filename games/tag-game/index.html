@@ -128,6 +128,18 @@ select.field-input{cursor:pointer}
 #joyBase{width:130px;height:130px;border-radius:50%;background:rgba(26,26,46,.5);border:2px solid rgba(42,147,240,.5);position:relative;backdrop-filter:blur(2px)}
 #joyKnob{width:58px;height:58px;border-radius:50%;background:rgba(42,147,240,.85);border:2px solid rgba(255,255,255,.85);position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;box-shadow:0 2px 10px rgba(0,0,0,.45)}
 
+/* Aim joystick + throw button (bomb) */
+#aimJoystick{position:fixed;right:max(18px,env(safe-area-inset-right));bottom:max(20px,env(safe-area-inset-bottom));z-index:70;display:none;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
+#aimJoystick.active{display:block}
+#aimBase{width:130px;height:130px;border-radius:50%;background:rgba(40,20,20,.45);border:2px solid rgba(255,140,40,.55);position:relative;backdrop-filter:blur(2px)}
+#aimKnob{width:58px;height:58px;border-radius:50%;background:rgba(255,120,30,.85);border:2px solid rgba(255,255,255,.85);position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;box-shadow:0 2px 10px rgba(0,0,0,.45)}
+#throwBtn{position:fixed;right:max(40px,calc(env(safe-area-inset-right) + 40px));bottom:max(168px,calc(env(safe-area-inset-bottom) + 168px));z-index:72;display:none;width:86px;height:86px;border:2px solid rgba(255,255,255,.85);border-radius:50%;font-weight:900;font-size:.8rem;line-height:1.05;letter-spacing:1px;color:#fff;background:radial-gradient(circle at 35% 30%, #ff9a3c, #e8521a);box-shadow:0 0 12px rgba(255,120,30,.7),0 0 26px rgba(255,90,20,.4);cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
+#throwBtn.active{display:block}
+#throwBtn.disabled{opacity:.32;pointer-events:none;filter:grayscale(.5)}
+#throwBtn:active{filter:brightness(1.15)}
+/* On non-touch, drop the throw button to the bottom-right corner */
+body:not(.touch-device) #throwBtn{bottom:max(24px,calc(env(safe-area-inset-bottom) + 24px))}
+
 @media(max-width:600px){
   h1{font-size:1.8rem}
   .round-end-card{padding:24px 20px}
@@ -286,10 +298,16 @@ select.field-input{cursor:pointer}
 
 <div id="tagFlash"></div>
 
-<!-- MOBILE TOUCH JOYSTICK -->
+<!-- MOBILE TOUCH JOYSTICK (move) -->
 <div id="touchJoystick">
   <div id="joyBase"><div id="joyKnob"></div></div>
 </div>
+
+<!-- AIM JOYSTICK + THROW BUTTON (bomb) -->
+<div id="aimJoystick">
+  <div id="aimBase"><div id="aimKnob"></div></div>
+</div>
+<button id="throwBtn" type="button">THROW<br><span style="font-size:.6rem;opacity:.8;letter-spacing:0">BOMB</span></button>
 
 <script>
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -301,6 +319,14 @@ const TAG_COOLDOWN = 1.5;
 const NETWORK_TICK = 1/20;
 const ELIM_FLASH_DURATION = 1.8;   // seconds the "ELIMINATED" banner shows
 const BETWEEN_ROUND_DELAY = 0.5;   // seconds between elim flash clearing and new round
+
+// Bomb (the "It" player throws a bomb to tag at range)
+const BOMB_RADIUS = 9;
+const BOMB_SPEED = 520;            // px/s while flying
+const BOMB_LIFETIME = 2.6;         // seconds flying before it returns to the thrower
+const BOMB_MAX_BOUNCES = 6;        // wall/obstacle bounces before it returns
+const THROW_COOLDOWN = 0.45;       // seconds after gaining the bomb / a miss before next throw
+const AIM_DEADZONE = 0.18;
 
 const CHARACTER_ROSTER = [
   {name:'Sponge',  color:'#f5c842'},
@@ -356,6 +382,13 @@ let pendingInputs = {};
 // Input
 const keys = {};
 let localDx = 0, localDy = 0;
+
+// Bomb state (the current "It" player holds it; can be thrown)
+let bomb = { state:'held', x:0, y:0, vx:0, vy:0, ownerId:null, bounces:0, life:0, cd:0, spin:0 };
+let bombFx = { active:false, x:0, y:0, t:0 };   // transient explosion effect
+// Aim input (right joystick on touch, mouse on desktop)
+let aimActive = false, aimDx = 0, aimDy = 0, aimTouchId = null;
+let mouseAimActive = false, mouseAimDx = 0, mouseAimDy = 0;
 
 // Canvas
 let canvas, ctx;
@@ -460,6 +493,7 @@ function setIt(newItId, fromId){
   players.forEach(p=>{
     p.isIt = (p.id === newItId);
   });
+  attachBombToOwner(newItId);   // the bomb always follows the current "It"
 }
 
 // ─── Game Init ───────────────────────────────────────────────────────────────
@@ -589,6 +623,8 @@ function update(dt){
 
     updateBots(dt);
     movePlayers(dt);
+    botMaybeThrow(dt);
+    updateBomb(dt);
     checkTags();
 
     if(gameMode === 'host'){
@@ -685,6 +721,7 @@ function endGame(){
   if(rafId){cancelAnimationFrame(rafId);rafId=null;}
   document.getElementById('elimFlash').classList.remove('active');
   showJoystick(false);
+  hideThrowUI();
 
   // Build final results: survivor is #1, then eliminated in reverse order (last eliminated = #2)
   const results = [];
@@ -887,9 +924,356 @@ function showTaggedLabel(){
   setTimeout(()=>el.remove(), 1200);
 }
 
+// ─── Bomb ────────────────────────────────────────────────────────────────────
+function attachBombToOwner(id){
+  bomb.ownerId = id;
+  bomb.state = 'held';
+  bomb.bounces = 0; bomb.life = 0;
+  bomb.cd = THROW_COOLDOWN;
+  const o = getPlayer(id);
+  if(o){ bomb.x = o.x; bomb.y = o.y - PLAYER_RADIUS - 10; }
+}
+
+function throwBomb(dirX, dirY){
+  const owner = getPlayer(bomb.ownerId);
+  if(!owner || owner.id !== itPlayerId) return;
+  if(bomb.state !== 'held' || bomb.cd > 0 || gameState !== 'playing') return;
+  const len = Math.hypot(dirX, dirY);
+  if(len === 0) return;
+  const nx = dirX/len, ny = dirY/len;
+  bomb.state = 'flying';
+  bomb.x = owner.x + nx*(PLAYER_RADIUS+BOMB_RADIUS+2);
+  bomb.y = owner.y + ny*(PLAYER_RADIUS+BOMB_RADIUS+2);
+  bomb.vx = nx*BOMB_SPEED; bomb.vy = ny*BOMB_SPEED;
+  bomb.bounces = 0; bomb.life = BOMB_LIFETIME;
+}
+
+// Advance a projectile {x,y,vx,vy,bounces} one step, bouncing off walls + obstacles.
+function stepBomb(s, dt){
+  s.x += s.vx*dt;
+  s.y += s.vy*dt;
+  if(s.x < BOMB_RADIUS){ s.x = BOMB_RADIUS; s.vx = Math.abs(s.vx); s.bounces++; }
+  else if(s.x > CANVAS_W-BOMB_RADIUS){ s.x = CANVAS_W-BOMB_RADIUS; s.vx = -Math.abs(s.vx); s.bounces++; }
+  if(s.y < BOMB_RADIUS){ s.y = BOMB_RADIUS; s.vy = Math.abs(s.vy); s.bounces++; }
+  else if(s.y > CANVAS_H-BOMB_RADIUS){ s.y = CANVAS_H-BOMB_RADIUS; s.vy = -Math.abs(s.vy); s.bounces++; }
+  for(const o of OBSTACLES){
+    const cx = clamp(s.x, o.x, o.x+o.w);
+    const cy = clamp(s.y, o.y, o.y+o.h);
+    const ddx = s.x - cx, ddy = s.y - cy;
+    if(ddx*ddx + ddy*ddy < BOMB_RADIUS*BOMB_RADIUS){
+      // Push out along the axis of least penetration and reflect that component.
+      const left   = s.x - (o.x - BOMB_RADIUS);
+      const right  = (o.x + o.w + BOMB_RADIUS) - s.x;
+      const top    = s.y - (o.y - BOMB_RADIUS);
+      const bottom = (o.y + o.h + BOMB_RADIUS) - s.y;
+      const m = Math.min(left, right, top, bottom);
+      if(m === left){ s.x = o.x - BOMB_RADIUS; s.vx = -Math.abs(s.vx); }
+      else if(m === right){ s.x = o.x + o.w + BOMB_RADIUS; s.vx = Math.abs(s.vx); }
+      else if(m === top){ s.y = o.y - BOMB_RADIUS; s.vy = -Math.abs(s.vy); }
+      else { s.y = o.y + o.h + BOMB_RADIUS; s.vy = Math.abs(s.vy); }
+      s.bounces++;
+    }
+  }
+}
+
+// Host/solo only: simulate the bomb each frame.
+function updateBomb(dt){
+  if(bomb.cd > 0) bomb.cd -= dt;
+  bomb.spin = (bomb.spin||0) + dt*12;
+  if(bombFx.active){ bombFx.t += dt; if(bombFx.t > 0.45) bombFx.active = false; }
+  if(gameState !== 'playing') return;
+
+  const owner = getPlayer(bomb.ownerId);
+  if(bomb.state === 'held'){
+    if(owner){ bomb.x = owner.x; bomb.y = owner.y - PLAYER_RADIUS - 10; }
+    return;
+  }
+  if(!owner) return;
+
+  const steps = 4, sdt = dt/steps;
+  for(let i=0;i<steps;i++){
+    if(bomb.state === 'flying'){
+      stepBomb(bomb, sdt);
+      bomb.life -= sdt;
+      for(const p of players){
+        if(p.id === bomb.ownerId) continue;
+        if(Math.hypot(bomb.x-p.x, bomb.y-p.y) < BOMB_RADIUS+PLAYER_RADIUS){
+          explodeBombAt(bomb.x, bomb.y);
+          doTag(p.id);          // the hit player becomes "It" and gains the bomb
+          return;
+        }
+      }
+      if(bomb.life <= 0 || bomb.bounces >= BOMB_MAX_BOUNCES) bomb.state = 'returning';
+    } else if(bomb.state === 'returning'){
+      const ddx = owner.x - bomb.x, ddy = owner.y - bomb.y;
+      const d = Math.hypot(ddx, ddy);
+      if(d < PLAYER_RADIUS+BOMB_RADIUS){
+        bomb.state = 'held'; bomb.cd = THROW_COOLDOWN;
+        bomb.x = owner.x; bomb.y = owner.y - PLAYER_RADIUS - 10;
+        return;
+      }
+      bomb.vx = ddx/d*BOMB_SPEED; bomb.vy = ddy/d*BOMB_SPEED;
+      bomb.x += bomb.vx*sdt; bomb.y += bomb.vy*sdt;
+    }
+  }
+}
+
+function explodeBombFx(x,y){ bombFx.active = true; bombFx.x = x; bombFx.y = y; bombFx.t = 0; frameShake = 0.45; }
+function explodeBombAt(x,y){ explodeBombFx(x,y); if(gameMode === 'host') broadcastBombExplode(x,y); }
+
+// Simulate the throw path (with bounces) for the aim preview.
+function simulateBombPath(ox, oy, dirX, dirY){
+  const len = Math.hypot(dirX, dirY);
+  if(len === 0) return {points:[], impact:null};
+  const s = { x:ox, y:oy, vx:dirX/len*BOMB_SPEED, vy:dirY/len*BOMB_SPEED, bounces:0 };
+  const pts = [{x:s.x,y:s.y}];
+  let impact = null, n = 0;
+  const sdt = 1/120, maxSteps = Math.round(1.5/sdt);
+  for(let k=0;k<maxSteps;k++){
+    stepBomb(s, sdt);
+    for(const p of players){
+      if(p.id === bomb.ownerId) continue;
+      if(Math.hypot(s.x-p.x, s.y-p.y) < BOMB_RADIUS+PLAYER_RADIUS){ impact = {x:s.x,y:s.y}; break; }
+    }
+    if(impact) break;
+    if((n++ % 4) === 0) pts.push({x:s.x,y:s.y});
+    if(s.bounces >= BOMB_MAX_BOUNCES){ pts.push({x:s.x,y:s.y}); break; }
+  }
+  return {points:pts, impact};
+}
+
+function autoAimDir(){
+  const it = getPlayer(itPlayerId);
+  if(!it) return {x:0,y:0};
+  let nearest=null, nd=Infinity;
+  for(const p of players){
+    if(p.id===it.id) continue;
+    const d=dist(it,p); if(d<nd){nd=d;nearest=p;}
+  }
+  if(nearest) return {x:nearest.x-it.x, y:nearest.y-it.y};
+  return {x:it.facingDx||1, y:it.facingDy||0};
+}
+
+function localIsIt(){
+  const lp = getPlayer(localPlayerId);
+  return !!(lp && lp.isIt && !localSpectating);
+}
+function canLocalThrow(){
+  if(gameState!=='playing' || !localIsIt() || bomb.state!=='held') return false;
+  if(gameMode!=='client' && bomb.cd>0) return false;
+  return true;
+}
+
+// Throw triggered by the local player (aim joystick / button / mouse / key).
+function doThrowLocal(dx, dy){
+  if(gameState!=='playing' || !localIsIt() || bomb.state!=='held') return;
+  let nx=dx, ny=dy;
+  if(Math.hypot(nx,ny) < 0.01){ const a = autoAimDir(); nx=a.x; ny=a.y; }
+  if(gameMode==='client'){
+    try{ connections[0].send({type:'throw', dx:nx, dy:ny}); }catch(e){}
+  } else {
+    if(bomb.cd>0) return;
+    throwBomb(nx, ny);
+  }
+}
+
+// Bot "It" lobs the bomb at the nearest target (host/solo only).
+function botMaybeThrow(dt){
+  const it = getPlayer(itPlayerId);
+  if(!it || !it.isBot) return;
+  if(bomb.state!=='held' || bomb.ownerId!==it.id || bomb.cd>0) return;
+  if(it._throwTimer === undefined) it._throwTimer = rand(0.3, 1.0);
+  it._throwTimer -= dt;
+  if(it._throwTimer > 0) return;
+  const diff = botDifficulty;
+  const interval = diff==='easy'?1.3:diff==='medium'?0.9:0.6;
+  const range    = diff==='easy'?340:diff==='medium'?420:540;
+  const errMax   = diff==='easy'?0.5:diff==='medium'?0.28:0.12;
+  it._throwTimer = interval + rand(0, interval*0.4);
+  let nearest=null, nd=Infinity;
+  for(const p of players){ if(p.id===it.id) continue; const d=dist(it,p); if(d<nd){nd=d;nearest=p;} }
+  if(!nearest || nd>range) return;
+  let dx=nearest.x-it.x, dy=nearest.y-it.y;
+  if(diff==='hard' && nearest._inputDx!==undefined){ dx += nearest._inputDx*nearest.speed*0.25; dy += nearest._inputDy*nearest.speed*0.25; }
+  const ang = Math.atan2(dy,dx) + rand(-errMax, errMax);
+  throwBomb(Math.cos(ang), Math.sin(ang));
+}
+
+// ── Bomb rendering ──
+function drawBombSprite(x, y, r){
+  ctx.save();
+  const g = ctx.createRadialGradient(x,y,r*0.3,x,y,r*2.2);
+  g.addColorStop(0,'rgba(255,140,40,0.45)'); g.addColorStop(1,'rgba(255,140,40,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x,y,r*2.2,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#1a1a22'; ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.beginPath(); ctx.arc(x-r*0.35,y-r*0.35,r*0.28,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle = '#9a6a3a'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x+r*0.5,y-r*0.7); ctx.quadraticCurveTo(x+r*1.1,y-r*1.2,x+r*0.8,y-r*1.55); ctx.stroke();
+  const sp = 0.6 + 0.4*Math.sin(performance.now()/80);
+  ctx.fillStyle = `rgba(255,${180+Math.floor(60*sp)},40,${0.7+0.3*sp})`;
+  ctx.beginPath(); ctx.arc(x+r*0.8,y-r*1.55,r*0.32*sp+1,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+function drawBomb(){
+  if(!bomb.ownerId) return;
+  if(bomb.state === 'held'){
+    const o = getPlayer(bomb.ownerId); if(!o) return;
+    drawBombSprite(o.x + PLAYER_RADIUS*0.75, o.y - PLAYER_RADIUS*1.05, BOMB_RADIUS);
+  } else {
+    ctx.save();
+    ctx.globalAlpha = 0.22; ctx.fillStyle = '#ff7a1a';
+    ctx.beginPath(); ctx.arc(bomb.x-bomb.vx*0.012, bomb.y-bomb.vy*0.012, BOMB_RADIUS*0.85,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+    drawBombSprite(bomb.x, bomb.y, BOMB_RADIUS);
+  }
+}
+
+function drawTrajectory(){
+  if(!canLocalThrow()) return;
+  const aimingTouch = isTouchDevice && aimActive;
+  const aimingMouse = mouseAimActive;
+  if(!aimingTouch && !aimingMouse) return;
+  const it = getPlayer(localPlayerId); if(!it) return;
+  const dx = aimingTouch ? aimDx : mouseAimDx;
+  const dy = aimingTouch ? aimDy : mouseAimDy;
+  const sx = it.x + dx*(PLAYER_RADIUS+BOMB_RADIUS+2);
+  const sy = it.y + dy*(PLAYER_RADIUS+BOMB_RADIUS+2);
+  const { points, impact } = simulateBombPath(sx, sy, dx, dy);
+  ctx.save();
+  ctx.fillStyle = 'rgba(42,147,240,0.85)';
+  for(const pt of points){ ctx.beginPath(); ctx.arc(pt.x, pt.y, 3, 0, Math.PI*2); ctx.fill(); }
+  const end = impact || (points.length ? points[points.length-1] : null);
+  if(end){
+    ctx.strokeStyle = impact ? 'rgba(255,80,80,0.95)' : 'rgba(255,255,255,0.8)';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(end.x, end.y, BOMB_RADIUS+6, 0, Math.PI*2); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawBombFx(){
+  if(!bombFx.active) return;
+  const k = bombFx.t/0.45;
+  const r = 10 + k*60;
+  ctx.save();
+  ctx.globalAlpha = 1-k;
+  ctx.strokeStyle = 'rgba(255,170,40,0.9)'; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.arc(bombFx.x, bombFx.y, r, 0, Math.PI*2); ctx.stroke();
+  ctx.fillStyle = `rgba(255,90,30,${0.5*(1-k)})`;
+  ctx.beginPath(); ctx.arc(bombFx.x, bombFx.y, r*0.6, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+// ── Bomb controls (show/hide + input wiring) ──
+function updateThrowUI(){
+  const btn = document.getElementById('throwBtn');
+  const aim = document.getElementById('aimJoystick');
+  const itNow = gameState==='playing' && localIsIt();
+  if(btn){
+    btn.classList.toggle('active', itNow);
+    btn.classList.toggle('disabled', !(itNow && bomb.state==='held' && (gameMode==='client' || bomb.cd<=0)));
+  }
+  if(aim){
+    aim.classList.toggle('active', itNow && isTouchDevice);
+    if(!itNow) aimReset();
+  }
+}
+function hideThrowUI(){
+  const btn = document.getElementById('throwBtn'); if(btn) btn.classList.remove('active');
+  const aim = document.getElementById('aimJoystick'); if(aim) aim.classList.remove('active');
+  aimReset();
+}
+
+function aimSetKnob(dx, dy){
+  const k = document.getElementById('aimKnob');
+  if(k) k.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+}
+function aimReset(){ aimActive=false; aimDx=0; aimDy=0; aimTouchId=null; aimSetKnob(0,0); }
+function aimUpdateFromPoint(clientX, clientY){
+  const base = document.getElementById('aimBase'); if(!base) return;
+  const rect = base.getBoundingClientRect();
+  const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
+  const dx = clientX-cx, dy = clientY-cy;
+  const len = Math.hypot(dx,dy);
+  const clamped = Math.min(len, JOY_MAX_R);
+  let kx=0, ky=0;
+  if(len>0){ kx = dx/len*clamped; ky = dy/len*clamped; }
+  aimSetKnob(kx, ky);
+  const nx = kx/JOY_MAX_R, ny = ky/JOY_MAX_R, mag = Math.hypot(nx,ny);
+  if(mag > AIM_DEADZONE){ aimActive = true; aimDx = nx/mag; aimDy = ny/mag; }
+  else aimActive = false;
+}
+
+function setupBombControls(){
+  const aimBase = document.getElementById('aimBase');
+  if(aimBase){
+    aimBase.addEventListener('touchstart', e=>{
+      e.preventDefault();
+      if(aimTouchId !== null) return;
+      const t = e.changedTouches[0];
+      aimTouchId = t.identifier;
+      aimUpdateFromPoint(t.clientX, t.clientY);
+    }, {passive:false});
+    window.addEventListener('touchmove', e=>{
+      if(aimTouchId === null) return;
+      for(const t of e.changedTouches){
+        if(t.identifier === aimTouchId){ e.preventDefault(); aimUpdateFromPoint(t.clientX, t.clientY); }
+      }
+    }, {passive:false});
+    function aimEnd(e){
+      if(aimTouchId === null) return;
+      for(const t of e.changedTouches){
+        if(t.identifier === aimTouchId){
+          if(aimActive) doThrowLocal(aimDx, aimDy);
+          aimReset();
+        }
+      }
+    }
+    window.addEventListener('touchend', aimEnd);
+    window.addEventListener('touchcancel', aimEnd);
+  }
+
+  const btn = document.getElementById('throwBtn');
+  if(btn){
+    const fire = e=>{
+      e.preventDefault();
+      if(mouseAimActive) doThrowLocal(mouseAimDx, mouseAimDy);
+      else doThrowLocal(0, 0);   // 0,0 → auto-aim nearest
+    };
+    btn.addEventListener('click', fire);
+    btn.addEventListener('touchstart', fire, {passive:false});
+  }
+
+  const cv = document.getElementById('gameCanvas');
+  if(cv){
+    cv.addEventListener('mousemove', e=>{
+      if(gameState!=='playing' || !localIsIt()){ mouseAimActive=false; return; }
+      const it = getPlayer(localPlayerId); if(!it) return;
+      const rect = cv.getBoundingClientRect();
+      const gx = (e.clientX-rect.left)*CANVAS_W/rect.width;
+      const gy = (e.clientY-rect.top)*CANVAS_H/rect.height;
+      const dx = gx-it.x, dy = gy-it.y, l = Math.hypot(dx,dy);
+      if(l>4){ mouseAimActive=true; mouseAimDx=dx/l; mouseAimDy=dy/l; }
+    });
+    cv.addEventListener('mouseleave', ()=>{ mouseAimActive=false; });
+    cv.addEventListener('mousedown', e=>{
+      if(e.button!==0 || gameState!=='playing' || !localIsIt()) return;
+      const it = getPlayer(localPlayerId); if(!it) return;
+      const rect = cv.getBoundingClientRect();
+      const gx = (e.clientX-rect.left)*CANVAS_W/rect.width;
+      const gy = (e.clientY-rect.top)*CANVAS_H/rect.height;
+      doThrowLocal(gx-it.x, gy-it.y);
+    });
+  }
+}
+
 // ─── Render ──────────────────────────────────────────────────────────────────
 function render(){
   if(!ctx) return;
+  updateThrowUI();
   ctx.save();
 
   if(frameShake > 0){
@@ -927,6 +1311,10 @@ function render(){
   }
 
   players.forEach(p=>drawPlayer(p));
+
+  drawTrajectory();
+  drawBomb();
+  drawBombFx();
 
   // Spectator mode overlay hint
   if(localSpectating && gameState === 'playing'){
@@ -1363,6 +1751,7 @@ function goToMenu(){
   document.getElementById('elimFlash').classList.remove('active');
   document.getElementById('elimPanel').innerHTML = '';
   showJoystick(false);
+  hideThrowUI();
   gameState = 'menu';
   if(rafId){cancelAnimationFrame(rafId);rafId=null;}
   if(peer){peer.destroy();peer=null;}
@@ -1375,6 +1764,11 @@ function getPlayer(id){return players.find(p=>p.id===id)||null;}
 document.addEventListener('keydown',e=>{
   keys[e.key.toLowerCase()]=true;
   if(e.key===' '&&gameState==='menu') startSoloGame();
+  if((e.key==='f'||e.key==='F'||e.key===' ')&&gameState==='playing'){
+    e.preventDefault();
+    if(mouseAimActive) doThrowLocal(mouseAimDx, mouseAimDy);
+    else doThrowLocal(0, 0);
+  }
   if(e.key==='Escape'&&(gameState==='playing'||gameState==='between')) goToMenu();
 });
 document.addEventListener('keyup',e=>{ keys[e.key.toLowerCase()]=false; });
@@ -1517,6 +1911,11 @@ function setupHostConnection(conn){
       if(!eliminated.find(e=>e.id===pid)){
         pendingInputs[pid]={dx:data.dx,dy:data.dy};
       }
+    } else if(data.type==='throw'){
+      const pid = conn._playerId||conn.peer;
+      if(pid===itPlayerId && bomb.state==='held' && bomb.cd<=0){
+        throwBomb(data.dx, data.dy);
+      }
     }
   });
   conn.on('close',()=>{
@@ -1556,6 +1955,8 @@ function setupClientConnection(conn, myName){
       setIt(data.newIt, data.prevIt);
       showTagFlash();
       showTaggedLabel();
+    } else if(data.type==='bombExplode'){
+      explodeBombFx(data.x, data.y);
     } else if(data.type==='eliminate'){
       // Host says player X is eliminated
       const elim = players.find(p=>p.id===data.elimId);
@@ -1705,6 +2106,7 @@ function buildStateMsg(){
     itId: itPlayerId,
     prevItId,
     tagCooldown: tagCooldownTimer,
+    bomb: {state:bomb.state, x:bomb.x, y:bomb.y, ownerId:bomb.ownerId},
     players: players.map(p=>({id:p.id,name:p.name,x:p.x,y:p.y,isIt:p.isIt,color:p.color,isBot:p.isBot,speed:p.speed,charIdx:p.charIdx}))
   };
 }
@@ -1716,6 +2118,11 @@ function broadcastState(){
 
 function broadcastTag(newItId){
   const msg={type:'tag',newIt:newItId,prevIt:prevItId};
+  connections.forEach(c=>{try{c.send(msg);}catch(e){}});
+}
+
+function broadcastBombExplode(x,y){
+  const msg={type:'bombExplode',x,y};
   connections.forEach(c=>{try{c.send(msg);}catch(e){}});
 }
 
@@ -1761,6 +2168,11 @@ function applyServerState(data){
     const serverIds = new Set(data.players.map(p=>p.id));
     players = players.filter(p=>serverIds.has(p.id));
   }
+  if(data.bomb){
+    bomb.state = data.bomb.state;
+    bomb.x = data.bomb.x; bomb.y = data.bomb.y;
+    bomb.ownerId = data.bomb.ownerId;
+  }
 }
 
 function sendInputToHost(){
@@ -1777,6 +2189,7 @@ window.addEventListener('resize',()=>{
 // ─── Init ─────────────────────────────────────────────────────────────────────
 setMode('solo');
 setupJoystick();
+setupBombControls();
 </script>
 </body>
 </html>
