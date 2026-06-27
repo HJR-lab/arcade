@@ -299,37 +299,36 @@
     speechSynthesis.onvoiceschanged = pickVoice;
   }
 
-  // speak + show caption; resolves when speech ends (or after a sensible delay)
-  function say(text) {
-    captionEl.textContent = text;
-    captionEl.style.opacity = 1;
-    const minMs = Math.max(2600, text.length * 62);
-    if (!useVoice || !('speechSynthesis' in window)) return sleep(minMs);
-    return new Promise(res => {
-      let done = false; const finish = () => { if (!done) { done = true; res(); } };
+  // Estimated time to read a line aloud (~150 wpm + a small buffer).
+  // The tutorial's pacing is driven by THIS clock — never by speech events,
+  // which are unreliable (Chrome frequently never fires `onend`).
+  function readMs(text) {
+    const words = text.trim().split(/\s+/).length;
+    return Math.max(2600, Math.round((words / 150) * 60000) + 700);
+  }
+
+  // Fire-and-forget speech. Best-effort: if TTS is unavailable or flaky,
+  // the captions + timer carry the experience regardless.
+  function speakAsync(text) {
+    if (!useVoice || !('speechSynthesis' in window)) return;
+    try {
+      if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
       if (voice) u.voice = voice;
       u.rate = 0.97; u.pitch = 1.02;
-      u.onend = finish; u.onerror = finish;
-      setTimeout(finish, Math.max(minMs, text.length * 135)); // safety net
-      try { speechSynthesis.cancel(); speechSynthesis.speak(u); }
-      catch (e) { setTimeout(finish, minMs); }
-    });
+      speechSynthesis.speak(u);
+    } catch (e) { /* ignore — timer still advances */ }
   }
-  // Speak a line WHILE something else animates: returns the speech promise.
-  function narrate(text) {
+
+  // Show caption, start speaking, and resolve on the reading-time clock.
+  function say(text) {
     captionEl.textContent = text;
-    if (!useVoice || !('speechSynthesis' in window))
-      return sleep(Math.max(2600, text.length * 62));
-    return new Promise(res => {
-      let done = false; const finish = () => { if (!done) { done = true; res(); } };
-      const u = new SpeechSynthesisUtterance(text);
-      if (voice) u.voice = voice; u.rate = 0.97; u.pitch = 1.02;
-      u.onend = finish; u.onerror = finish;
-      setTimeout(finish, text.length * 135);
-      try { speechSynthesis.speak(u); } catch (e) { setTimeout(finish, 3000); }
-    });
+    captionEl.style.opacity = 1;
+    speakAsync(text);
+    return sleep(readMs(text));
   }
+  // Same, used while something animates concurrently.
+  const narrate = say;
 
   // =====================================================================
   //  Recording (canvas video + procedural ambient audio)
