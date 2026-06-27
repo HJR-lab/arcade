@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Posca Markers — Lion Drawing Tutorial</title>
+<style>
+  :root { --paper:#fbfbf6; --ink:#2a2a2a; }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%;
+    background: radial-gradient(circle at 50% 30%, #2b2f3a, #14161c);
+    color: #eee; font-family: "Segoe UI", system-ui, sans-serif;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  #stage {
+    position: relative; width: min(96vw, 960px); aspect-ratio: 16 / 10;
+    border-radius: 14px; overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,.55);
+  }
+  canvas { display: block; width: 100%; height: 100%; }
+  #caption {
+    position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%);
+    max-width: 86%; text-align: center; padding: 10px 18px;
+    background: rgba(12,14,20,.72); border-radius: 12px;
+    font-size: clamp(14px, 2.4vw, 21px); line-height: 1.35;
+    backdrop-filter: blur(3px); transition: opacity .3s; pointer-events: none;
+    text-shadow: 0 1px 2px #000;
+  }
+  #badge {
+    position: absolute; top: 12px; left: 14px; font-size: 13px;
+    letter-spacing: .14em; text-transform: uppercase; color: #ffd27a;
+    opacity: .85; pointer-events: none;
+  }
+  #rec {
+    position: absolute; top: 12px; right: 14px; display: none;
+    align-items: center; gap: 7px; font-size: 13px; color: #ff6b6b;
+  }
+  #rec .dot { width: 10px; height: 10px; border-radius: 50%; background:#ff3b3b;
+    animation: blink 1s infinite; }
+  @keyframes blink { 50% { opacity: .25; } }
+  #overlay {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 18px; text-align: center;
+    background: radial-gradient(circle at 50% 35%, rgba(40,44,56,.92), rgba(12,14,20,.97));
+    padding: 24px;
+  }
+  #overlay h1 { margin: 0; font-size: clamp(22px, 5vw, 40px); }
+  #overlay p { margin: 0; max-width: 540px; opacity: .85; line-height: 1.5; }
+  .btn {
+    border: none; cursor: pointer; border-radius: 999px;
+    padding: 14px 30px; font-size: 18px; font-weight: 600;
+    background: linear-gradient(135deg, #ffb347, #ff7e5f); color: #1a1209;
+    box-shadow: 0 8px 22px rgba(255,126,95,.35);
+  }
+  .btn:active { transform: translateY(1px); }
+  .opts { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center;
+    font-size: 14px; opacity: .9; }
+  .opts label { cursor: pointer; user-select: none; }
+  #done { position: absolute; inset: 0; display: none; flex-direction: column;
+    align-items: center; justify-content: center; gap: 16px; text-align:center;
+    background: rgba(12,14,20,.82); }
+  #done .small { font-size: 14px; opacity: .8; max-width: 480px; line-height:1.5;}
+  a.dl { color:#ffd27a; }
+</style>
+</head>
+<body>
+  <div id="stage">
+    <canvas id="c" width="1280" height="800"></canvas>
+    <div id="badge">Posca • Lion Tutorial</div>
+    <div id="rec"><span class="dot"></span> REC</div>
+    <div id="caption">Drawing with Posca markers</div>
+
+    <div id="overlay">
+      <h1>🦁 Drawing with Posca Markers</h1>
+      <p>A narrated tutorial: learn the tips, then watch a lion drawn stroke-by-stroke.
+         Only the paper and a hand are shown. Sound is on — turn your volume up.</p>
+      <button class="btn" id="start">▶ Start tutorial</button>
+      <div class="opts">
+        <label><input type="checkbox" id="optVoice" checked> Spoken narration</label>
+        <label><input type="checkbox" id="optRec"> Record to a video file (.webm)</label>
+      </div>
+    </div>
+
+    <div id="done">
+      <h1>That's a wrap! 🦁</h1>
+      <div class="small" id="doneMsg">Hope those Posca tips help. Refresh to watch again.</div>
+      <button class="btn" id="replay">↺ Watch again</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+  "use strict";
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  // Offscreen "artwork" layer — paper + everything painted on it persists here.
+  const art = document.createElement('canvas');
+  art.width = W; art.height = H;
+  const actx = art.getContext('2d');
+
+  const captionEl = document.getElementById('caption');
+  const overlay = document.getElementById('overlay');
+  const doneEl = document.getElementById('done');
+  const recEl = document.getElementById('rec');
+
+  // ---- Paper geometry ----
+  const paper = { x: 250, y: 90, w: 780, h: 620 };
+  const cx = paper.x + paper.w / 2;
+  const cy = paper.y + paper.h / 2 + 10;
+
+  // ---- Hand / marker state (the tip follows the pen target) ----
+  let handPos = { x: cx, y: cy };
+  let handTarget = { x: cx, y: cy };
+  let markerColor = '#e8743b';
+  let shakeAmt = 0;
+
+  // =====================================================================
+  //  RENDER LOOP  (always running; composites paper + art + hand)
+  // =====================================================================
+  function drawDesk() {
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#6b5844'); g.addColorStop(1, '#473a2c');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    // faint wood grain
+    ctx.globalAlpha = 0.06; ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
+    for (let i = 0; i < 14; i++) {
+      ctx.beginPath();
+      const yy = (i / 14) * H + Math.sin(i) * 6;
+      ctx.moveTo(0, yy); ctx.bezierCurveTo(W*0.3, yy+8, W*0.6, yy-8, W, yy+3); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function basePaper() {
+    // scrap sheet peeking behind, plus main sheet — drawn once into `art`
+    actx.clearRect(0, 0, W, H);
+    actx.save();
+    actx.translate(paper.x - 40, paper.y + 36); actx.rotate(-0.05);
+    roundRect(actx, 0, 0, paper.w, paper.h, 10); actx.fillStyle = '#eceadf';
+    actx.shadowColor = 'rgba(0,0,0,.35)'; actx.shadowBlur = 18; actx.shadowOffsetY = 10;
+    actx.fill(); actx.restore();
+
+    actx.save();
+    roundRect(actx, paper.x, paper.y, paper.w, paper.h, 12);
+    actx.fillStyle = '#fbfbf6';
+    actx.shadowColor = 'rgba(0,0,0,.4)'; actx.shadowBlur = 24; actx.shadowOffsetY = 12;
+    actx.fill(); actx.restore();
+  }
+
+  function drawHand(g, tx, ty) {
+    g.save();
+    g.translate(tx, ty);
+    g.rotate(0.52); // tilt the marker to the right
+    // ---- marker pointing "up" (negative Y), nib at origin ----
+    // nib
+    g.fillStyle = '#d9d2c4';
+    g.beginPath(); g.moveTo(-9, 0); g.lineTo(9, 0); g.lineTo(5, -26); g.lineTo(-5, -26); g.closePath(); g.fill();
+    // collar
+    g.fillStyle = '#b9b2a4'; roundRect(g, -13, -40, 26, 16, 4); g.fill();
+    // body (white Posca barrel)
+    g.fillStyle = '#f4f1e9'; roundRect(g, -19, -200, 38, 162, 10); g.fill();
+    g.strokeStyle = 'rgba(0,0,0,.12)'; g.lineWidth = 2; roundRect(g, -19, -200, 38, 162, 10); g.stroke();
+    // colored label band shows current ink color
+    g.fillStyle = markerColor; roundRect(g, -19, -150, 38, 40, 4); g.fill();
+    g.fillStyle = 'rgba(255,255,255,.85)'; g.font = 'bold 13px sans-serif';
+    g.textAlign = 'center'; g.fillText('POSCA', 0, -124);
+    // cap end
+    g.fillStyle = markerColor; roundRect(g, -19, -236, 38, 40, 10); g.fill();
+
+    // ---- hand gripping the barrel (to the right of it) ----
+    g.fillStyle = '#e7b48c';
+    // palm/back of hand
+    g.beginPath(); g.ellipse(34, -86, 50, 66, -0.25, 0, Math.PI*2); g.fill();
+    // thumb wrapping front
+    g.beginPath(); g.ellipse(-2, -96, 16, 30, 0.5, 0, Math.PI*2); g.fill();
+    // finger ridges over the barrel
+    g.fillStyle = '#edbf99';
+    for (let i = 0; i < 4; i++) {
+      g.beginPath(); g.ellipse(8 + i*2, -120 + i*22, 22, 12, 0, 0, Math.PI*2); g.fill();
+    }
+    // wrist
+    g.fillStyle = '#e7b48c';
+    g.beginPath(); g.moveTo(8, -40); g.quadraticCurveTo(70, -30, 96, 60);
+    g.lineTo(150, 60); g.quadraticCurveTo(120, -80, 70, -150); g.closePath(); g.fill();
+    g.restore();
+  }
+
+  let lastT = performance.now();
+  function render(now) {
+    lastT = now;
+    // ease the hand toward its target
+    handPos.x += (handTarget.x - handPos.x) * 0.28;
+    handPos.y += (handTarget.y - handPos.y) * 0.28;
+    const sx = shakeAmt ? (Math.sin(now / 26) * shakeAmt) : 0;
+    const sy = shakeAmt ? (Math.cos(now / 21) * shakeAmt) : 0;
+
+    drawDesk();
+    ctx.drawImage(art, 0, 0);
+    if (handVisible) drawHand(ctx, handPos.x + sx, handPos.y + sy);
+    requestAnimationFrame(render);
+  }
+  let handVisible = false;
+  requestAnimationFrame(render);
+
+  // =====================================================================
+  //  Drawing primitives (paint onto `art` over time)
+  // =====================================================================
+  function roundRect(g, x, y, w, h, r) {
+    g.beginPath();
+    g.moveTo(x + r, y);
+    g.arcTo(x + w, y, x + w, y + h, r);
+    g.arcTo(x + w, y + h, x, y + h, r);
+    g.arcTo(x, y + h, x, y, r);
+    g.arcTo(x, y, x + w, y, r);
+    g.closePath();
+  }
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+  function pathLength(pts) {
+    let L = 0; for (let i = 1; i < pts.length; i++)
+      L += Math.hypot(pts[i].x - pts[i-1].x, pts[i].y - pts[i-1].y);
+    return L;
+  }
+  function pointAt(pts, d) { // point at distance d along polyline
+    let acc = 0;
+    for (let i = 1; i < pts.length; i++) {
+      const seg = Math.hypot(pts[i].x - pts[i-1].x, pts[i].y - pts[i-1].y);
+      if (acc + seg >= d) {
+        const t = (d - acc) / (seg || 1);
+        return { x: pts[i-1].x + (pts[i].x - pts[i-1].x) * t,
+                 y: pts[i-1].y + (pts[i].y - pts[i-1].y) * t };
+      }
+      acc += seg;
+    }
+    return pts[pts.length - 1];
+  }
+
+  // Animate a single stroke being drawn onto the artwork.
+  function stroke(pts, { color = '#2a2a2a', width = 7, speed = 950, alpha = 1, cap = 'round' } = {}) {
+    return new Promise(resolve => {
+      if (pts.length < 2) return resolve();
+      const total = pathLength(pts);
+      let last = pts[0];
+      const start = performance.now();
+      actx.lineCap = cap; actx.lineJoin = 'round';
+      function step(now) {
+        const d = Math.min(total, ((now - start) / 1000) * speed);
+        const cur = pointAt(pts, d);
+        actx.globalAlpha = alpha;
+        actx.strokeStyle = color; actx.lineWidth = width;
+        actx.beginPath(); actx.moveTo(last.x, last.y); actx.lineTo(cur.x, cur.y); actx.stroke();
+        actx.globalAlpha = 1;
+        last = cur;
+        handTarget.x = cur.x; handTarget.y = cur.y;
+        if (d < total) requestAnimationFrame(step); else resolve();
+      }
+      requestAnimationFrame(step);
+    });
+  }
+
+  function dot(x, y, r, color) {
+    actx.fillStyle = color; actx.beginPath(); actx.arc(x, y, r, 0, Math.PI*2); actx.fill();
+    handTarget.x = x; handTarget.y = y;
+  }
+
+  // ---- shape generators ----
+  function circlePts(x, y, r, segs = 72, from = -Math.PI/2, span = Math.PI*2) {
+    const p = [];
+    for (let i = 0; i <= segs; i++) p.push({ x: x + Math.cos(from + span*i/segs)*r,
+                                             y: y + Math.sin(from + span*i/segs)*r });
+    return p;
+  }
+  function arcPts(x, y, r, from, to, segs = 24) {
+    const p = [];
+    for (let i = 0; i <= segs; i++) {
+      const a = from + (to - from) * i / segs;
+      p.push({ x: x + Math.cos(a)*r, y: y + Math.sin(a)*r });
+    }
+    return p;
+  }
+
+  // =====================================================================
+  //  Narration (browser TTS) synced with captions
+  // =====================================================================
+  let useVoice = true;
+  let voice = null;
+  function pickVoice() {
+    if (!('speechSynthesis' in window)) return;
+    const vs = speechSynthesis.getVoices();
+    voice = vs.find(v => /en[-_]?(US|GB)/i.test(v.lang) && /female|samantha|google/i.test(v.name))
+         || vs.find(v => /^en/i.test(v.lang)) || vs[0] || null;
+  }
+  if ('speechSynthesis' in window) {
+    pickVoice();
+    speechSynthesis.onvoiceschanged = pickVoice;
+  }
+
+  // speak + show caption; resolves when speech ends (or after a sensible delay)
+  function say(text) {
+    captionEl.textContent = text;
+    captionEl.style.opacity = 1;
+    const minMs = Math.max(2600, text.length * 62);
+    if (!useVoice || !('speechSynthesis' in window)) return sleep(minMs);
+    return new Promise(res => {
+      let done = false; const finish = () => { if (!done) { done = true; res(); } };
+      const u = new SpeechSynthesisUtterance(text);
+      if (voice) u.voice = voice;
+      u.rate = 0.97; u.pitch = 1.02;
+      u.onend = finish; u.onerror = finish;
+      setTimeout(finish, Math.max(minMs, text.length * 135)); // safety net
+      try { speechSynthesis.cancel(); speechSynthesis.speak(u); }
+      catch (e) { setTimeout(finish, minMs); }
+    });
+  }
+  // Speak a line WHILE something else animates: returns the speech promise.
+  function narrate(text) {
+    captionEl.textContent = text;
+    if (!useVoice || !('speechSynthesis' in window))
+      return sleep(Math.max(2600, text.length * 62));
+    return new Promise(res => {
+      let done = false; const finish = () => { if (!done) { done = true; res(); } };
+      const u = new SpeechSynthesisUtterance(text);
+      if (voice) u.voice = voice; u.rate = 0.97; u.pitch = 1.02;
+      u.onend = finish; u.onerror = finish;
+      setTimeout(finish, text.length * 135);
+      try { speechSynthesis.speak(u); } catch (e) { setTimeout(finish, 3000); }
+    });
+  }
+
+  // =====================================================================
+  //  Recording (canvas video + procedural ambient audio)
+  // =====================================================================
+  let recorder = null, recChunks = [], wantRecord = false, audioCtx = null;
+  function startRecording() {
+    try {
+      const stream = canvas.captureStream(30);
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const dest = audioCtx.createMediaStreamDestination();
+      // soft lo-fi pad so the exported file has an audio track
+      const master = audioCtx.createGain(); master.gain.value = 0.04; master.connect(dest);
+      [220, 277.18, 329.63].forEach((f, i) => {
+        const o = audioCtx.createOscillator(); o.type = 'sine'; o.frequency.value = f;
+        const g = audioCtx.createGain(); g.gain.value = 0.5;
+        const lfo = audioCtx.createOscillator(); lfo.frequency.value = 0.06 + i*0.03;
+        const lg = audioCtx.createGain(); lg.gain.value = 0.3;
+        lfo.connect(lg); lg.connect(g.gain);
+        o.connect(g); g.connect(master); o.start(); lfo.start();
+      });
+      dest.stream.getAudioTracks().forEach(t => stream.addTrack(t));
+      const mime = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm']
+        .find(m => MediaRecorder.isTypeSupported(m)) || 'video/webm';
+      recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 4_000_000 });
+      recChunks = [];
+      recorder.ondataavailable = e => { if (e.data.size) recChunks.push(e.data); };
+      recorder.start();
+      recEl.style.display = 'flex';
+    } catch (e) { console.warn('Recording unavailable:', e); wantRecord = false; }
+  }
+  function stopRecording() {
+    return new Promise(res => {
+      if (!recorder) return res(null);
+      recorder.onstop = () => {
+        const blob = new Blob(recChunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        if (audioCtx) audioCtx.close();
+        recEl.style.display = 'none';
+        res(url);
+      };
+      recorder.stop();
+    });
+  }
+
+  // =====================================================================
+  //  TUTORIAL SCRIPT
+  // =====================================================================
+  const TIPS = [
+    { c: '#1f6f3b', t: "Tip one. Shake the marker well with the cap on — you'll hear the mixing ball rattle. That blends the paint so the colour comes out rich and even." },
+    { c: '#1f6f3b', t: "Tip two. Prime the tip on a scrap of paper. Press the nib down gently a few times until the paint flows. Never scrub a dry nib across your art." },
+    { c: '#b8902a', t: "Tip three. Posca paint is opaque and water-based, so light colours cover dark ones. That means you can add bright highlights right on top later." },
+    { c: '#b8902a', t: "Tip four. Let each layer dry completely before adding the next, or the colours will smear and muddy together. Patience keeps your edges crisp." },
+    { c: '#7a4bd0', t: "Tip five. Sketch lightly in pencil first. Then outline with a fine tip, fill your big shapes, and save the tiny details and highlights for the very end." },
+  ];
+
+  async function intro() {
+    handVisible = true;
+    handTarget = { x: paper.x + 120, y: paper.y + 120 };
+    handPos = { ...handTarget };
+    await sleep(500);
+    await say("Hi! Today I'll share five quick tips for drawing with Posca paint markers — then we'll put them to use and draw a friendly lion together. Ready? Let's go.");
+  }
+
+  async function doTips() {
+    for (let i = 0; i < TIPS.length; i++) {
+      markerColor = TIPS[i].c;
+      // little bit of life: shake for tip 1, tap for tip 2, hover otherwise
+      handTarget = { x: paper.x + 140 + i*60, y: paper.y + 140 };
+      if (i === 0) {
+        shakeAmt = 16;
+        const p = say(TIPS[i].t); await sleep(2200); shakeAmt = 0; await p;
+      } else if (i === 1) {
+        const p = say(TIPS[i].t);
+        for (let k = 0; k < 4; k++) {            // tap the scrap sheet
+          handTarget = { x: paper.x + 90, y: paper.y + 130 + (k%2?40:0) };
+          dot(paper.x - 10, paper.y + 150 + k*6, 5, TIPS[i].c); await sleep(260);
+        }
+        await p;
+      } else {
+        await say(TIPS[i].t);
+      }
+      await sleep(300);
+    }
+    await say("Great — now you know the basics. Let's draw that lion!");
+  }
+
+  async function clearForLion() {
+    // wipe the practice marks: redraw fresh paper
+    captionEl.textContent = "A fresh sheet of paper…";
+    handTarget = { x: paper.x + paper.w - 60, y: paper.y - 20 };
+    await sleep(700);
+    basePaper();
+    await sleep(400);
+  }
+
+  async function drawLion() {
+    const FACE = '#caa14a', OUTLINE = '#3a2a16', MANE = '#e8743b', DARK = '#b8531f';
+
+    // 1) head outline
+    markerColor = OUTLINE;
+    const a = narrate("We start the lion with a simple circle for the head.");
+    await stroke(circlePts(cx, cy, 150, 80), { color: OUTLINE, width: 8, speed: 700 });
+    await a;
+
+    // 2) ears
+    const b = narrate("Two little rounded ears on top.");
+    await stroke(arcPts(cx - 95, cy - 120, 40, Math.PI*0.75, Math.PI*1.9), { color: OUTLINE, width: 8 });
+    await stroke(arcPts(cx + 95, cy - 120, 40, Math.PI*1.1, Math.PI*2.25), { color: OUTLINE, width: 8 });
+    await b;
+
+    // 3) mane — spiky strokes all the way around
+    const c = narrate("Now the big mane. Lots of spiky strokes radiating out all around the head — this is what makes a lion a lion.");
+    const spikes = 30;
+    for (let i = 0; i < spikes; i++) {
+      const ang = (i / spikes) * Math.PI * 2;
+      const len = 58 + (i % 2 ? 26 : 0);
+      const inner = { x: cx + Math.cos(ang)*145, y: cy + Math.sin(ang)*145 };
+      const midA = ang + 0.06;
+      const tip = { x: cx + Math.cos(midA)*(150+len), y: cy + Math.sin(midA)*(150+len) };
+      const back = { x: cx + Math.cos(ang+0.14)*150, y: cy + Math.sin(ang+0.14)*150 };
+      await stroke([inner, tip, back], { color: MANE, width: 9, speed: 1500 });
+    }
+    await c;
+
+    // 4) eyes
+    markerColor = OUTLINE;
+    const d = narrate("Two friendly eyes…");
+    await stroke(circlePts(cx - 52, cy - 18, 26, 36), { color: OUTLINE, width: 6, speed: 800 });
+    await stroke(circlePts(cx + 52, cy - 18, 26, 36), { color: OUTLINE, width: 6, speed: 800 });
+    dot(cx - 52, cy - 14, 11, OUTLINE); dot(cx + 52, cy - 14, 11, OUTLINE);
+    dot(cx - 56, cy - 18, 3, '#fff');   dot(cx + 48, cy - 18, 3, '#fff');
+    await d;
+
+    // 5) nose + muzzle + mouth
+    const e = narrate("…a heart-shaped nose, and a happy mouth.");
+    await stroke([{x:cx-22,y:cy+30},{x:cx,y:cy+18},{x:cx+22,y:cy+30},
+                  {x:cx,y:cy+58},{x:cx-22,y:cy+30}], { color: OUTLINE, width: 7, speed: 900 });
+    await stroke(arcPts(cx, cy+58, 34, Math.PI*0.15, Math.PI*0.85), { color: OUTLINE, width: 6 });
+    await stroke(arcPts(cx, cy+58, 34, Math.PI*0.15, Math.PI*0.85).map(p=>({x:2*cx-p.x,y:p.y})), { color: OUTLINE, width: 6 });
+    await e;
+
+    // 6) whiskers
+    const f = narrate("A few whiskers on each side.");
+    for (const s of [-1, 1]) for (let k = 0; k < 3; k++) {
+      const y0 = cy + 50 + k*16;
+      await stroke([{x: cx + s*26, y: y0}, {x: cx + s*150, y: y0 - 18 + k*18}],
+                   { color: OUTLINE, width: 4, speed: 1400 });
+    }
+    await f;
+
+    // 7) colour the face
+    const g = narrate("Time to colour. Golden yellow on the face, with gentle back-and-forth strokes — staying inside our lines.");
+    await scribbleEllipse(cx, cy, 140, 150, FACE, 0.5);
+    await g;
+
+    // 8) colour the mane
+    const h = narrate("And a warm orange to fill the mane.");
+    markerColor = MANE;
+    for (let i = 0; i < spikes; i++) {
+      const ang = (i / spikes) * Math.PI * 2;
+      const inner = { x: cx + Math.cos(ang)*150, y: cy + Math.sin(ang)*150 };
+      const tip = { x: cx + Math.cos(ang)*(150+70), y: cy + Math.sin(ang)*(150+70) };
+      await stroke([inner, tip], { color: i%2 ? MANE : DARK, width: 16, speed: 2600, alpha: 0.9 });
+    }
+    await h;
+
+    // 9) highlights last (Posca opacity tip in action)
+    const k = narrate("And remember tip three — light covers dark. So we finish with bright white highlights right on top. And there's our lion!");
+    dot(cx - 56, cy - 22, 4, '#fff'); dot(cx + 48, cy - 22, 4, '#fff');
+    await stroke([{x:cx-10,y:cy+34},{x:cx-2,y:cy+30}], { color:'#fff', width:5 });
+    await scatterHighlights();
+    await k;
+  }
+
+  // back-and-forth marker "coloring" clipped to an ellipse
+  async function scribbleEllipse(ex, ey, rx, ry, color, alpha) {
+    markerColor = color;
+    const rows = 20;
+    for (let i = 0; i <= rows; i++) {
+      const yy = ey - ry + (2*ry) * i / rows;
+      const t = (yy - ey) / ry;
+      const half = rx * Math.sqrt(Math.max(0, 1 - t*t)) - 6;
+      if (half < 6) continue;
+      const dir = i % 2 ? 1 : -1;
+      await stroke([{x: ex - dir*half, y: yy}, {x: ex + dir*half, y: yy}],
+                   { color, width: 18, speed: 3200, alpha });
+    }
+  }
+  async function scatterHighlights() {
+    const pts = [[cx-70,cy-70],[cx+80,cy-50],[cx-30,cy+90],[cx+40,cy+80]];
+    for (const [x,y] of pts) { dot(x, y, 5, '#fff'); await sleep(180); }
+  }
+
+  // =====================================================================
+  //  RUN
+  // =====================================================================
+  async function run() {
+    basePaper();
+    if (wantRecord) startRecording();
+    await intro();
+    await doTips();
+    await clearForLion();
+    await drawLion();
+    handVisible = false;
+    handTarget = { x: cx, y: cy + 400 };
+    captionEl.textContent = "Thanks for drawing with me! 🦁";
+    await sleep(1200);
+
+    let videoUrl = null;
+    if (wantRecord) videoUrl = await stopRecording();
+    showDone(videoUrl);
+  }
+
+  function showDone(videoUrl) {
+    const msg = document.getElementById('doneMsg');
+    if (videoUrl) {
+      msg.innerHTML = 'Your video is ready. ' +
+        '<a class="dl" id="dlLink" href="' + videoUrl + '" download="posca-lion-tutorial.webm">⬇ Download the .webm video</a>' +
+        '<br><br><span style="opacity:.7">Note: the file includes the visuals, captions and soft background music. ' +
+        'The spoken narration plays live in the browser (browser speech can\'t be captured into the file).</span>';
+    } else {
+      msg.textContent = "Hope those Posca tips help. Refresh or press below to watch again.";
+    }
+    doneEl.style.display = 'flex';
+  }
+
+  // ---- wire up controls ----
+  document.getElementById('start').addEventListener('click', () => {
+    useVoice = document.getElementById('optVoice').checked;
+    wantRecord = document.getElementById('optRec').checked;
+    // unlock speech on user gesture
+    if (useVoice && 'speechSynthesis' in window) {
+      try { speechSynthesis.resume(); speechSynthesis.cancel(); } catch (e) {}
+    }
+    overlay.style.display = 'none';
+    run();
+  });
+  document.getElementById('replay').addEventListener('click', () => location.reload());
+})();
+</script>
+</body>
+</html>
