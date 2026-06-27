@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>POSCA Marker Tutorial — Beginner's Guide</title>
+  <meta name="description" content="A friendly, hands-on guide to using POSCA paint markers: priming the nib, choosing tip sizes, layering, blending, and an interactive practice pad." />
+  <style>
+    /* ---- Self-contained styles: no external fonts or scripts, so the
+            page always renders even with no network. ---- */
+    :root {
+      --bg: #0f1226;
+      --bg-soft: #181c3a;
+      --card: #20254c;
+      --ink: #f4f6ff;
+      --muted: #aeb4dd;
+      --accent: #ff4d8d;
+      --accent-2: #ffd23f;
+      --accent-3: #2ec4b6;
+      --accent-4: #4cc9f0;
+      --radius: 16px;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 600px at 80% -10%, rgba(76,201,240,.18), transparent 60%),
+        radial-gradient(900px 500px at -10% 20%, rgba(255,77,141,.18), transparent 55%),
+        var(--bg);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--accent-4); }
+
+    .wrap { max-width: 920px; margin: 0 auto; padding: 0 1.25rem; }
+
+    /* ---- Hero ---- */
+    header.hero {
+      padding: 4.5rem 0 3rem;
+      text-align: center;
+    }
+    .pill {
+      display: inline-block;
+      font-size: .8rem;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--bg);
+      background: var(--accent-2);
+      padding: .35rem .8rem;
+      border-radius: 999px;
+      font-weight: 700;
+      margin-bottom: 1.25rem;
+    }
+    h1 {
+      font-size: clamp(2.1rem, 6vw, 3.6rem);
+      line-height: 1.1;
+      letter-spacing: -.02em;
+      margin-bottom: 1rem;
+    }
+    h1 .grad {
+      background: linear-gradient(90deg, var(--accent), var(--accent-2), var(--accent-3));
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .hero p.lead { color: var(--muted); font-size: 1.15rem; max-width: 38rem; margin: 0 auto 2rem; }
+    .cta-row { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      display: inline-block; cursor: pointer; border: none;
+      font: inherit; font-weight: 700;
+      padding: .8rem 1.4rem; border-radius: 999px;
+      text-decoration: none; transition: transform .12s ease, filter .12s ease;
+    }
+    .btn:hover { transform: translateY(-2px); filter: brightness(1.07); }
+    .btn-primary { background: linear-gradient(90deg, var(--accent), #ff7aa8); color: #fff; box-shadow: var(--shadow); }
+    .btn-ghost { background: rgba(255,255,255,.08); color: var(--ink); }
+
+    /* ---- Sections ---- */
+    section { padding: 2.5rem 0; }
+    h2 { font-size: clamp(1.5rem, 4vw, 2.1rem); margin-bottom: .5rem; }
+    .section-sub { color: var(--muted); margin-bottom: 1.75rem; }
+
+    .card {
+      background: linear-gradient(180deg, var(--card), var(--bg-soft));
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      box-shadow: var(--shadow);
+    }
+    .grid { display: grid; gap: 1rem; }
+    @media (min-width: 640px) { .grid.cols-2 { grid-template-columns: 1fr 1fr; } .grid.cols-3 { grid-template-columns: repeat(3,1fr); } }
+
+    /* ---- Steps ---- */
+    ol.steps { list-style: none; counter-reset: step; display: grid; gap: 1rem; }
+    ol.steps > li {
+      counter-increment: step;
+      position: relative;
+      padding: 1.1rem 1.25rem 1.1rem 3.6rem;
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 14px;
+    }
+    ol.steps > li::before {
+      content: counter(step);
+      position: absolute; left: 1rem; top: 1rem;
+      width: 1.9rem; height: 1.9rem; border-radius: 50%;
+      display: grid; place-items: center;
+      background: var(--accent); color: #fff; font-weight: 800; font-size: .95rem;
+    }
+    ol.steps h3 { font-size: 1.05rem; margin-bottom: .15rem; }
+    ol.steps p { color: var(--muted); margin: 0; }
+
+    .tip {
+      border-left: 4px solid var(--accent-3);
+      background: rgba(46,196,182,.08);
+      padding: .9rem 1.1rem; border-radius: 0 12px 12px 0; margin-top: 1rem;
+    }
+    .tip strong { color: var(--accent-3); }
+    .warn { border-left-color: var(--accent-2); background: rgba(255,210,63,.08); }
+    .warn strong { color: var(--accent-2); }
+
+    /* ---- Tip-size table ---- */
+    table { width: 100%; border-collapse: collapse; font-size: .96rem; }
+    th, td { text-align: left; padding: .7rem .6rem; border-bottom: 1px solid rgba(255,255,255,.09); }
+    th { color: var(--accent-4); text-transform: uppercase; font-size: .75rem; letter-spacing: .08em; }
+    td.code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--accent-2); white-space: nowrap; }
+
+    .feature h3 { display: flex; align-items: center; gap: .5rem; margin-bottom: .35rem; }
+    .feature .dot { width: .85rem; height: .85rem; border-radius: 50%; flex: none; }
+    .feature p { color: var(--muted); font-size: .96rem; }
+
+    /* ---- Practice pad ---- */
+    .pad-toolbar { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; margin-bottom: 1rem; }
+    .swatches { display: flex; gap: .4rem; flex-wrap: wrap; }
+    .swatch {
+      width: 2rem; height: 2rem; border-radius: 50%; cursor: pointer;
+      border: 3px solid rgba(255,255,255,.25); transition: transform .1s ease;
+    }
+    .swatch:hover { transform: scale(1.1); }
+    .swatch[aria-pressed="true"] { border-color: #fff; box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px #fff; }
+    .ctrl { display: flex; align-items: center; gap: .4rem; color: var(--muted); font-size: .9rem; }
+    input[type="range"] { accent-color: var(--accent); }
+    canvas#pad {
+      width: 100%; height: 340px; display: block; border-radius: 12px;
+      background: #fbfaf6; touch-action: none; cursor: crosshair;
+      border: 1px solid rgba(0,0,0,.1);
+    }
+    .pad-note { color: var(--muted); font-size: .85rem; margin-top: .6rem; }
+
+    footer { text-align: center; color: var(--muted); padding: 3rem 0 4rem; font-size: .9rem; }
+    footer a { color: var(--accent); }
+    .nojs { display: none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <header class="hero">
+      <span class="pill">Paint Marker Basics</span>
+      <h1>The <span class="grad">POSCA</span> Marker Tutorial</h1>
+      <p class="lead">Everything a beginner needs to start painting with POSCA water-based paint markers — from priming a brand-new nib to layering, blending, and fixing mistakes.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#start">Start the guide</a>
+        <a class="btn btn-ghost" href="#practice">Try the practice pad</a>
+      </div>
+    </header>
+
+    <!-- What are they -->
+    <section id="what">
+      <h2>What is a POSCA marker?</h2>
+      <p class="section-sub">A quick orientation before you uncap anything.</p>
+      <div class="card">
+        <p>POSCA markers are <strong>water-based pigment paint markers</strong>. The ink is opaque, so light colors show up on dark surfaces, and it dries to a matte, water-resistant finish. They work on paper, card, wood, fabric, glass, ceramic, plastic, metal, canvas, stone — almost anything dry and clean.</p>
+        <p style="margin-top:.75rem">They use a <strong>valve / pump system</strong>: paint only flows when you press the nib down. That's why a new marker looks "empty" until you prime it — which is the very first thing we'll do.</p>
+      </div>
+    </section>
+
+    <!-- Getting started steps -->
+    <section id="start">
+      <h2>Getting started in 4 steps</h2>
+      <p class="section-sub">Do this every time you pick up a marker that hasn't been used in a while.</p>
+      <ol class="steps">
+        <li>
+          <h3>Shake it (cap on!)</h3>
+          <p>Shake the marker well for 10–15 seconds. You'll hear a small mixing ball rattle — that stirs the pigment so the color comes out rich and even.</p>
+        </li>
+        <li>
+          <h3>Prime the nib</h3>
+          <p>Hold the marker upright with the cap off and gently press the nib straight down onto a scrap surface several times. Pump until paint soaks into the tip and the color flows.</p>
+        </li>
+        <li>
+          <h3>Test on scrap paper</h3>
+          <p>Make a few strokes on scrap before touching your real piece. Wait for a steady, even line — not patchy, not flooding.</p>
+        </li>
+        <li>
+          <h3>Paint in light layers</h3>
+          <p>Lay down thin, even coats. Let each layer dry, then add another for fully opaque, streak-free color.</p>
+        </li>
+      </ol>
+      <div class="tip warn">
+        <strong>Don't over-pump.</strong> Too many presses floods the nib and the paint pools or drips. A few gentle pumps is plenty — you can always pump again later.
+      </div>
+    </section>
+
+    <!-- Tip sizes -->
+    <section id="sizes">
+      <h2>Choosing the right tip size</h2>
+      <p class="section-sub">POSCA markers come in many nib sizes. Here are the ones beginners reach for most.</p>
+      <div class="card">
+        <table>
+          <thead>
+            <tr><th>Model</th><th>Line width</th><th>Best for</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="code">PC-1MR</td><td>~0.7 mm</td><td>Fine details, tiny text, outlines</td></tr>
+            <tr><td class="code">PC-3M</td><td>0.9–1.3 mm</td><td>Detail work, lettering, small areas</td></tr>
+            <tr><td class="code">PC-5M</td><td>1.8–2.5 mm</td><td>The all-rounder — great first marker</td></tr>
+            <tr><td class="code">PC-8K</td><td>8 mm chisel</td><td>Bold lines, filling medium areas</td></tr>
+            <tr><td class="code">PC-17K</td><td>15 mm broad</td><td>Backgrounds and large fills</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="tip"><strong>New here?</strong> Start with a <em>PC-5M</em> in a few colors plus a <em>PC-3M</em> for details. That pair covers most beginner projects.</div>
+    </section>
+
+    <!-- Techniques -->
+    <section id="techniques">
+      <h2>Core techniques</h2>
+      <p class="section-sub">The handful of moves that make POSCA work look clean.</p>
+      <div class="grid cols-2">
+        <div class="card feature">
+          <h3><span class="dot" style="background:var(--accent)"></span>Layering</h3>
+          <p>POSCA is opaque, but a single coat can look streaky. Let the first layer dry completely (about a minute), then add a second pass in the same direction for solid, flat color.</p>
+        </div>
+        <div class="card feature">
+          <h3><span class="dot" style="background:var(--accent-3)"></span>Blending</h3>
+          <p>Work fast while the paint is still wet: lay two colors next to each other and feather them together with the nib, or dab with a clean brush. Once it dries, it won't blend anymore.</p>
+        </div>
+        <div class="card feature">
+          <h3><span class="dot" style="background:var(--accent-2)"></span>Outlining &amp; detail</h3>
+          <p>Add fine lines, outlines, and highlights <em>after</em> your base colors are dry. Use a thin nib (PC-1MR / PC-3M) and let dark outlines and white highlights make shapes pop.</p>
+        </div>
+        <div class="card feature">
+          <h3><span class="dot" style="background:var(--accent-4)"></span>Fixing mistakes</h3>
+          <p>On non-porous surfaces (glass, plastic) wet paint wipes away with a damp cloth. On paper, wait for it to dry, then paint over the error — the opaque ink usually hides it.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Mini project -->
+    <section id="project">
+      <h2>Your first mini-project</h2>
+      <p class="section-sub">A simple sun-and-mountains scene that uses every technique above.</p>
+      <ol class="steps">
+        <li><h3>Sketch lightly</h3><p>Pencil in a horizon line, a circle for the sun, and a couple of triangular peaks.</p></li>
+        <li><h3>Base colors first</h3><p>Fill the sky and sun with the PC-5M. Let it dry, add a second coat for flat color.</p></li>
+        <li><h3>Blend the sky</h3><p>While the sky is still wet, streak in a warmer color near the horizon and feather it upward.</p></li>
+        <li><h3>Add the mountains</h3><p>Paint the peaks in a dry layer over the sky. Let them dry fully.</p></li>
+        <li><h3>Details last</h3><p>Outline the peaks with PC-3M and add white highlights and a few stars. Done!</p></li>
+      </ol>
+    </section>
+
+    <!-- Practice pad -->
+    <section id="practice">
+      <h2>Interactive practice pad</h2>
+      <p class="section-sub">Get a feel for opaque strokes and layering right here. Pick a color, set the nib size, and draw.</p>
+      <div class="card">
+        <div class="pad-toolbar">
+          <div class="swatches" id="swatches" role="group" aria-label="Marker colors"></div>
+          <label class="ctrl">Nib
+            <input type="range" id="size" min="3" max="46" value="14" aria-label="Nib size" />
+          </label>
+          <button class="btn btn-ghost" id="erase" type="button">Eraser</button>
+          <button class="btn btn-ghost" id="clear" type="button">Clear</button>
+        </div>
+        <canvas id="pad" width="860" height="340" aria-label="Drawing practice area"></canvas>
+        <p class="pad-note" id="padNote">Tip: draw slowly for a smooth POSCA-like edge. Use the mouse or your finger.</p>
+        <p class="pad-note nojs" id="nojsNote">Interactive pad needs JavaScript enabled — the tutorial above works without it.</p>
+      </div>
+    </section>
+
+    <footer>
+      <p>Made with POSCA paint markers in mind. Happy painting! 🎨</p>
+      <p style="margin-top:.4rem"><a href="../">← Back to hjr-lab.github.io/arcade</a></p>
+    </footer>
+
+  </div>
+
+  <script>
+  // All interactivity is wrapped so any error here can NEVER blank the page —
+  // the tutorial content above is plain HTML and renders regardless.
+  (function () {
+    try {
+      var colors = [
+        "#111111", "#ffffff", "#e63946", "#ff7d00", "#ffd23f",
+        "#2ec4b6", "#4cc9f0", "#3a86ff", "#8338ec", "#ff4d8d"
+      ];
+      var current = colors[0];
+      var erasing = false;
+
+      var swatchWrap = document.getElementById("swatches");
+      colors.forEach(function (c, i) {
+        var b = document.createElement("button");
+        b.className = "swatch";
+        b.type = "button";
+        b.style.background = c;
+        b.setAttribute("aria-label", "Color " + (i + 1));
+        b.setAttribute("aria-pressed", i === 0 ? "true" : "false");
+        b.addEventListener("click", function () {
+          current = c;
+          erasing = false;
+          Array.prototype.forEach.call(swatchWrap.children, function (el) {
+            el.setAttribute("aria-pressed", "false");
+          });
+          b.setAttribute("aria-pressed", "true");
+        });
+        swatchWrap.appendChild(b);
+      });
+
+      var canvas = document.getElementById("pad");
+      var ctx = canvas.getContext("2d");
+
+      // Make the canvas crisp on high-DPI screens and match its CSS size.
+      function fitCanvas() {
+        var ratio = window.devicePixelRatio || 1;
+        var rect = canvas.getBoundingClientRect();
+        // Preserve existing drawing across resizes.
+        var prev = document.createElement("canvas");
+        prev.width = canvas.width; prev.height = canvas.height;
+        prev.getContext("2d").drawImage(canvas, 0, 0);
+
+        canvas.width = Math.max(1, Math.round(rect.width * ratio));
+        canvas.height = Math.max(1, Math.round(rect.height * ratio));
+        ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+        ctx.fillStyle = "#fbfaf6";
+        ctx.fillRect(0, 0, rect.width, rect.height);
+        ctx.drawImage(prev, 0, 0, rect.width, rect.height);
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+      }
+      fitCanvas();
+      var resizeTimer;
+      window.addEventListener("resize", function () {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(fitCanvas, 150);
+      });
+
+      var drawing = false, lastX = 0, lastY = 0;
+      var sizeInput = document.getElementById("size");
+
+      function pos(e) {
+        var rect = canvas.getBoundingClientRect();
+        var p = (e.touches && e.touches[0]) ? e.touches[0] : e;
+        return { x: p.clientX - rect.left, y: p.clientY - rect.top };
+      }
+      function start(e) {
+        drawing = true;
+        var p = pos(e);
+        lastX = p.x; lastY = p.y;
+        e.preventDefault();
+      }
+      function move(e) {
+        if (!drawing) return;
+        var p = pos(e);
+        ctx.strokeStyle = erasing ? "#fbfaf6" : current;
+        ctx.lineWidth = parseInt(sizeInput.value, 10) || 14;
+        ctx.beginPath();
+        ctx.moveTo(lastX, lastY);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+        lastX = p.x; lastY = p.y;
+        e.preventDefault();
+      }
+      function end() { drawing = false; }
+
+      canvas.addEventListener("mousedown", start);
+      canvas.addEventListener("mousemove", move);
+      window.addEventListener("mouseup", end);
+      canvas.addEventListener("touchstart", start, { passive: false });
+      canvas.addEventListener("touchmove", move, { passive: false });
+      canvas.addEventListener("touchend", end);
+
+      document.getElementById("erase").addEventListener("click", function () {
+        erasing = !erasing;
+        this.textContent = erasing ? "Drawing" : "Eraser";
+      });
+      document.getElementById("clear").addEventListener("click", function () {
+        var rect = canvas.getBoundingClientRect();
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.fillStyle = "#fbfaf6";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.restore();
+      });
+    } catch (err) {
+      // Surface a friendly note instead of failing silently; content stays intact.
+      var note = document.getElementById("nojsNote");
+      if (note) {
+        note.classList.remove("nojs");
+        note.textContent = "The practice pad couldn't start, but the tutorial above works fine.";
+      }
+      if (window.console && console.error) console.error("Practice pad error:", err);
+    }
+  })();
+  </script>
+</body>
+</html>
