@@ -50,8 +50,8 @@
   .info-line { font-size: 0.82rem; color: #ff7b00; margin-top: 0.55rem; min-height: 1em; }
   .footer { color: #555; font-size: 0.75rem; margin-top: 1rem; text-align: center; }
   .home-link { display: inline-block; margin-top: 1.1rem; text-decoration: none; }
-  .diff-row { display: flex; gap: 0.45rem; margin-top: 0.65rem; }
-  .diff-btn { flex: 1; background: #0a0a18; border: 1px solid #33335a; color: #c8c8e0; border-radius: 999px; padding: 0.45rem 0; font: 700 0.9rem inherit; font-family: inherit; cursor: pointer; }
+  .diff-row { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.65rem; }
+  .diff-btn { flex: 1 1 28%; background: #0a0a18; border: 1px solid #33335a; color: #c8c8e0; border-radius: 999px; padding: 0.45rem 0; font: 700 0.9rem inherit; font-family: inherit; cursor: pointer; }
   .diff-btn.active { background: linear-gradient(135deg, #ff7b00, #ff5b00); border-color: #ff9a40; color: #fff; }
 
   @media (pointer: coarse) { #touch { display: block; } }
@@ -96,6 +96,8 @@
       <button class="diff-btn active" data-level="easy">Easy</button>
       <button class="diff-btn" data-level="medium">Medium</button>
       <button class="diff-btn" data-level="hard">Hard</button>
+      <button class="diff-btn" data-level="veryhard">Very Hard</button>
+      <button class="diff-btn" data-level="impossible">Impossible</button>
     </div>
     <div class="ctrl-hint">Touch pad · Keys: A/D · W jump · Space shoot · O steal · P dribble (sprint)</div>
   </div>
@@ -492,7 +494,8 @@ function shoot(s, p) {
 // CPU AI (drives state.inputs[1] when in vs-CPU mode)
 // ============================================================
 // Difficulty presets for "vs CPU" (diff scales speed, reactions, aim and steals)
-const CPU_LEVELS = { easy: 0.4, medium: 0.65, hard: 1.0 };
+const CPU_LEVELS = { easy: 0.4, medium: 0.65, hard: 1.0, veryhard: 1.3, impossible: 1.7 };
+const CPU_LEVEL_NAMES = { easy: "Easy", medium: "Medium", hard: "Hard", veryhard: "Very Hard", impossible: "Impossible" };
 let cpuLevel = "easy";
 let aiState = { shootHoldTimer: 0, jumpCooldown: 0, spotX: 640, diff: CPU_LEVELS.easy, stealFired: false, moveHold: 0, lastL: false, lastR: false, shotTarget: 0 };
 function resetAi(diff) {
@@ -506,7 +509,7 @@ function aiThink(s) {
   aiState.jumpCooldown = Math.max(0, aiState.jumpCooldown - 1);
   const diff = aiState.diff;
   // Slower legs on easier levels
-  me.speedMul = Math.min(1, 0.6 + 0.4 * diff);
+  me.speedMul = Math.min(1.3, 0.6 + 0.4 * diff); // above Hard the CPU is faster than you
 
   if (b.holder === 1) {
     // Move toward a shooting spot. If already above the rim, just go for the dunk.
@@ -514,15 +517,17 @@ function aiThink(s) {
     if (nearRim && !me.onGround) {
       inp.shoot = true;
     } else {
-      if (me.x > aiState.spotX + 12) inp.left = true;
-      else if (me.x < aiState.spotX - 12) inp.right = true;
+      // Very Hard and up plant their feet while shooting (more accurate)
+      const planted = diff > 1 && aiState.shootHoldTimer > 0;
+      if (!planted && me.x > aiState.spotX + 12) inp.left = true;
+      else if (!planted && me.x < aiState.spotX - 12) inp.right = true;
       const dist = Math.abs(me.x - CFG.HOOP_LX);
       if (dist > 220 && dist < 760 && me.onGround) {
         aiState.shootHoldTimer++;
         const idealCharge = Math.min(0.9, 0.45 + dist / 1600) * CFG.SHOOT_MAX_CHARGE;
         // Pick how long to hold once per shot; easier CPUs are sloppier
         if (aiState.shotTarget === 0) {
-          const variance = 2.5 + 9 * (1 - diff);
+          const variance = Math.max(0, 2.5 + 9 * (1 - diff));
           aiState.shotTarget = Math.max(CFG.SHOOT_MIN_CHARGE, Math.round(idealCharge + (Math.random() * 2 - 1) * variance));
         }
         if (aiState.shootHoldTimer < aiState.shotTarget) inp.shoot = true;
@@ -536,7 +541,7 @@ function aiThink(s) {
       if (opp.x > me.x + 4) inp.right = true; else if (opp.x < me.x - 4) inp.left = true;
       const apart = Math.abs(opp.x - me.x);
       if (apart < 90 && aiState.jumpCooldown === 0 && me.onGround && Math.random() < 0.02 * diff * diff) {
-        inp.jump = true; aiState.jumpCooldown = 40 + Math.round(80 * (1 - diff));
+        inp.jump = true; aiState.jumpCooldown = Math.max(20, 40 + Math.round(80 * (1 - diff)));
       }
       // Steal: one roll per approach (it used to re-roll every frame, so it
       // almost always succeeded). Much rarer on easy.
@@ -559,7 +564,7 @@ function aiThink(s) {
       inp.left = aiState.lastL; inp.right = aiState.lastR;
     } else {
       aiState.lastL = inp.left; aiState.lastR = inp.right;
-      aiState.moveHold = Math.round(16 * (1 - diff));
+      aiState.moveHold = Math.max(0, Math.round(16 * (1 - diff)));
     }
   }
 }
@@ -1632,7 +1637,7 @@ document.querySelectorAll(".menu-card").forEach((card) => {
       menu.style.display = "none";
       hud.style.display = "flex";
       backBtn.style.display = "block";
-      modeLbl.textContent = m === "cpu" ? `vs CPU · ${cpuLevel[0].toUpperCase() + cpuLevel.slice(1)}` : "Local 2 Player";
+      modeLbl.textContent = m === "cpu" ? `vs CPU · ${CPU_LEVEL_NAMES[cpuLevel]}` : "Local 2 Player";
       hideStatus();
     } else if (m === "tournament") {
       startTournament();
