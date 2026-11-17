@@ -97,7 +97,7 @@
       <button class="diff-btn" data-level="medium">Medium</button>
       <button class="diff-btn" data-level="hard">Hard</button>
     </div>
-    <div class="ctrl-hint">Touch pad · Keys: A/D · W jump · Space shoot · E steal · Q dribble (sprint)</div>
+    <div class="ctrl-hint">Touch pad · Keys: A/D · W jump · Space shoot · O steal · P dribble (sprint)</div>
   </div>
   <div class="menu-card" data-mode="tournament">
     <h3>Tournament</h3>
@@ -107,7 +107,7 @@
   <div class="menu-card" data-mode="local">
     <h3>Local 2 Player</h3>
     <p>Two players, same screen.</p>
-    <div class="ctrl-hint">Red: A/D/W/F/E · LShift dribble · Blue: ←/→/↑/L/; · RShift dribble</div>
+    <div class="ctrl-hint">Red: A/D/W/F · O steal · P or LShift dribble · Blue: ←/→/↑/L/; · RShift dribble</div>
   </div>
   <div class="menu-card" data-mode="host">
     <h3>Play with a Friend — Host</h3>
@@ -1323,7 +1323,7 @@ function drawBall(s, b) {
 // ============================================================
 const keysDown = {};
 const localInputs = [emptyInput(), emptyInput()];
-const keyMap0 = { KeyA: "left", KeyD: "right", KeyW: "jump", KeyF: "shoot", Space: "shoot", KeyE: "steal", KeyQ: "dribble", ShiftLeft: "dribble" };
+const keyMap0 = { KeyA: "left", KeyD: "right", KeyW: "jump", KeyF: "shoot", Space: "shoot", KeyO: "steal", KeyP: "dribble", ShiftLeft: "dribble" };
 const keyMap1 = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "jump", KeyL: "shoot", Semicolon: "steal", KeyK: "dribble", ShiftRight: "dribble" };
 
 window.addEventListener("keydown", (e) => {
