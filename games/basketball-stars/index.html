@@ -305,7 +305,18 @@ function step(s) {
   } else {
     ball.vy += CFG.GRAVITY * 0.92;
     ball.vx *= CFG.BALL_AIR; ball.vy *= CFG.BALL_AIR;
-    ball.x += ball.vx; ball.y += ball.vy;
+    // Move in small sub-steps so a fast ball can't skip through the
+    // backboard or rim between two frames.
+    const subs = Math.max(1, Math.ceil(Math.hypot(ball.vx, ball.vy) / 4));
+    for (let i = 0; i < subs; i++) {
+      ball.x += ball.vx / subs; ball.y += ball.vy / subs;
+      backboardCollide(ball, CFG.HOOP_LX - 38, true);
+      backboardCollide(ball, CFG.HOOP_RX + 38, false);
+      rimCollide(ball, CFG.HOOP_LX - CFG.RIM_W / 2 + 8, CFG.RIM_Y);
+      rimCollide(ball, CFG.HOOP_LX + CFG.RIM_W / 2, CFG.RIM_Y);
+      rimCollide(ball, CFG.HOOP_RX - CFG.RIM_W / 2, CFG.RIM_Y);
+      rimCollide(ball, CFG.HOOP_RX + CFG.RIM_W / 2 - 8, CFG.RIM_Y);
+    }
 
     // floor
     if (ball.y + CFG.BALL_R >= CFG.GROUND) {
@@ -317,16 +328,6 @@ function step(s) {
     // walls
     if (ball.x - CFG.BALL_R < 25) { ball.x = 25 + CFG.BALL_R; ball.vx = -ball.vx * 0.7; }
     if (ball.x + CFG.BALL_R > CFG.W - 25) { ball.x = CFG.W - 25 - CFG.BALL_R; ball.vx = -ball.vx * 0.7; }
-
-    // backboards
-    backboardCollide(ball, CFG.HOOP_LX - 38, true);
-    backboardCollide(ball, CFG.HOOP_RX + 38, false);
-
-    // rim posts
-    rimCollide(ball, CFG.HOOP_LX - CFG.RIM_W / 2 + 8, CFG.RIM_Y);
-    rimCollide(ball, CFG.HOOP_LX + CFG.RIM_W / 2, CFG.RIM_Y);
-    rimCollide(ball, CFG.HOOP_RX - CFG.RIM_W / 2, CFG.RIM_Y);
-    rimCollide(ball, CFG.HOOP_RX + CFG.RIM_W / 2 - 8, CFG.RIM_Y);
 
     // scoring (ball passes through rim moving down)
     checkScore(s, CFG.HOOP_RX, 0); // Red shoots into right hoop
@@ -395,14 +396,44 @@ function rimCollide(b, rx, ry) {
     b.touchedRim = true;
   }
 }
+// The backboard is a solid slab (12 wide, with padding top and bottom).
+// The ball bounces off any side of it: front, back, top or bottom edge.
+const BOARD_T = 12;
+function backboardBox(bx, isLeft) {
+  return {
+    x0: isLeft ? bx - BOARD_T : bx, x1: isLeft ? bx : bx + BOARD_T,
+    y0: CFG.BACKBOARD_Y - 6, y1: CFG.BACKBOARD_Y + CFG.BACKBOARD_H + 6,
+  };
+}
 function backboardCollide(b, bx, isLeft) {
-  if (b.y < CFG.BACKBOARD_Y || b.y > CFG.BACKBOARD_Y + CFG.BACKBOARD_H) return;
-  if (isLeft && b.x - CFG.BALL_R < bx && b.x - CFG.BALL_R > bx - 14 && b.vx < 0) {
-    b.x = bx + CFG.BALL_R; b.vx = -b.vx * 0.55; b.touchedRim = true;
+  const box = backboardBox(bx, isLeft);
+  const R = CFG.BALL_R;
+  const cx = Math.max(box.x0, Math.min(b.x, box.x1));
+  const cy = Math.max(box.y0, Math.min(b.y, box.y1));
+  let dx = b.x - cx, dy = b.y - cy;
+  let d = Math.hypot(dx, dy);
+  if (d >= R) return;
+  let nx, ny;
+  if (d > 0) { nx = dx / d; ny = dy / d; }
+  else {
+    // centre is inside the board: push out the shortest way
+    const pens = [[b.x - box.x0, -1, 0], [box.x1 - b.x, 1, 0], [b.y - box.y0, 0, -1], [box.y1 - b.y, 0, 1]];
+    pens.sort((p, q) => p[0] - q[0]);
+    nx = pens[0][1]; ny = pens[0][2];
+    if (nx) dx = (nx > 0 ? box.x1 : box.x0) - b.x; else dy = (ny > 0 ? box.y1 : box.y0) - b.y;
+    d = 0;
   }
-  if (!isLeft && b.x + CFG.BALL_R > bx && b.x + CFG.BALL_R < bx + 14 && b.vx > 0) {
-    b.x = bx - CFG.BALL_R; b.vx = -b.vx * 0.55; b.touchedRim = true;
+  // push the ball out so it just touches the board
+  b.x = cx + nx * R; b.y = cy + ny * R;
+  if (d === 0) { if (nx) b.x = (nx > 0 ? box.x1 + R : box.x0 - R); else b.y = (ny > 0 ? box.y1 + R : box.y0 - R); }
+  const vn = b.vx * nx + b.vy * ny;
+  if (vn < 0) {
+    // bounce: flip the part of the velocity going into the board
+    b.vx -= 1.55 * vn * nx;
+    b.vy -= 1.55 * vn * ny;
+    b.vy *= ny ? 1 : 0.95;
   }
+  b.touchedRim = true;
 }
 function checkScore(s, hoopX, scorerId) {
   const b = s.ball;
@@ -953,25 +984,22 @@ function drawHoopBack(isLeft) {
   ctx.fillRect(armX0, bTop + 60, armX1 - armX0, 5);
 
   // Backboard (side-on glass, slightly turned toward us)
-  const bx0 = isLeft ? board - 12 : board;
-  ctx.fillStyle = "rgba(210, 235, 255, 0.35)";
-  ctx.beginPath();
-  ctx.moveTo(board, bTop - 6); ctx.lineTo(board + dir * 16, bTop + 4);
-  ctx.lineTo(board + dir * 16, bBot - 4); ctx.lineTo(board, bBot + 6);
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = "rgba(255,255,255,0.9)"; ctx.lineWidth = 2; ctx.stroke();
+  // Everything drawn here sits inside the solid slab the ball bounces off
+  const box = backboardBox(board, isLeft);
+  const back = isLeft ? box.x0 : box.x1;   // wall side
+  ctx.fillStyle = "rgba(210, 235, 255, 0.45)";
+  ctx.fillRect(box.x0, box.y0, BOARD_T, box.y1 - box.y0);
+  ctx.strokeStyle = "rgba(255,255,255,0.95)"; ctx.lineWidth = 2;
+  ctx.strokeRect(box.x0, box.y0, BOARD_T, box.y1 - box.y0);
   // target square on the glass
   ctx.strokeStyle = "#ff5a3c"; ctx.lineWidth = 2.5;
-  ctx.beginPath();
-  ctx.moveTo(board + dir * 4, CFG.RIM_Y - 38); ctx.lineTo(board + dir * 12, CFG.RIM_Y - 34);
-  ctx.lineTo(board + dir * 12, CFG.RIM_Y - 8); ctx.lineTo(board + dir * 4, CFG.RIM_Y - 8);
-  ctx.closePath(); ctx.stroke();
-  // board edge + pad
-  ctx.fillStyle = "#f2f5ff"; ctx.fillRect(bx0, bTop - 6, 12, CFG.BACKBOARD_H + 12);
-  ctx.fillStyle = "#e8452c"; ctx.fillRect(bx0, bBot, 12, 6);
+  ctx.strokeRect(box.x0 + 3, CFG.RIM_Y - 38, BOARD_T - 6, 30);
+  // court-facing edge + bottom pad
+  ctx.fillStyle = "#f2f5ff"; ctx.fillRect(isLeft ? board - 3 : board, box.y0, 3, box.y1 - box.y0);
+  ctx.fillStyle = "#e8452c"; ctx.fillRect(box.x0, bBot, BOARD_T, 6);
   // glass shine
-  ctx.strokeStyle = "rgba(255,255,255,0.45)"; ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.moveTo(board + dir * 5, bTop + 10); ctx.lineTo(board + dir * 11, bTop + 40); ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,0.5)"; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(back + dir * 3, bTop + 8); ctx.lineTo(back + dir * 8, bTop + 38); ctx.stroke();
 
   // Rim bracket + back half of the rim
   ctx.fillStyle = "#9aa0b8";
