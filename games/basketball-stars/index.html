@@ -23,8 +23,14 @@
   #touch { position: fixed; inset: auto 0 0 0; height: 35vh; pointer-events: none; z-index: 6; display: none; }
   .tc { position: absolute; pointer-events: auto; background: rgba(255, 255, 255, 0.08); border: 2px solid rgba(255, 255, 255, 0.22); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: rgba(255, 255, 255, 0.7); font-size: 0.95rem; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); transition: background 0.05s, border-color 0.05s; }
   .tc.active { background: rgba(255, 123, 0, 0.45); border-color: #ff7b00; color: #fff; }
-  .tc-l { left: max(env(safe-area-inset-left, 1rem), 4vw); bottom: 4vh; width: 80px; height: 80px; }
-  .tc-r { left: calc(max(env(safe-area-inset-left, 1rem), 4vw) + 90px); bottom: 4vh; width: 80px; height: 80px; }
+  /* Joystick: drag left/right to run, push up to jump */
+  .joy { position: absolute; pointer-events: auto; left: max(env(safe-area-inset-left, 1rem), 4vw); bottom: 4vh; width: 140px; height: 140px; border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.12) 100%); border: 2px solid rgba(255, 255, 255, 0.25); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); touch-action: none; }
+  .joy::before, .joy::after { content: ""; position: absolute; color: rgba(255,255,255,0.35); font-size: 14px; top: 50%; transform: translateY(-50%); }
+  .joy::before { content: "◀"; left: 10px; }
+  .joy::after { content: "▶"; right: 10px; }
+  .joy-up { position: absolute; top: 6px; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,0.35); font-size: 14px; pointer-events: none; }
+  .joy-knob { position: absolute; left: 50%; top: 50%; width: 62px; height: 62px; margin: -31px 0 0 -31px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ffb366, #ff7b00 60%, #c95400); border: 2px solid rgba(255,255,255,0.7); box-shadow: 0 4px 14px rgba(0,0,0,0.45); pointer-events: none; transition: transform 0.12s ease-out; }
+  .joy.held .joy-knob { transition: none; }
   /* Right cluster: 2x2 grid (top: STEAL, DRIB · bottom: JUMP, SHOOT) */
   .tc-steal   { right: calc(max(env(safe-area-inset-right, 1rem), 4vw) + 90px); bottom: calc(4vh + 88px); width: 80px; height: 80px; background: rgba(120, 230, 255, 0.14); border-color: rgba(120, 230, 255, 0.45); color: #b8e8ff; font-size: 0.78rem; }
   .tc-dribble { right: max(env(safe-area-inset-right, 1rem), 4vw);              bottom: calc(4vh + 88px); width: 80px; height: 80px; background: rgba(150, 255, 180, 0.14); border-color: rgba(150, 255, 180, 0.45); color: #c0ffd0; font-size: 0.85rem; }
@@ -57,8 +63,9 @@
   @media (pointer: coarse) { #touch { display: block; } }
   @media (max-height: 520px), (max-width: 720px) {
     .tc { width: 62px; height: 62px; font-size: 0.7rem; }
-    .tc-l, .tc-r, .tc-steal, .tc-dribble, .tc-jump, .tc-shoot { width: 62px; height: 62px; }
-    .tc-r       { left: calc(max(env(safe-area-inset-left, 1rem), 4vw) + 70px); }
+    .tc-steal, .tc-dribble, .tc-jump, .tc-shoot { width: 62px; height: 62px; }
+    .joy { width: 116px; height: 116px; }
+    .joy-knob { width: 52px; height: 52px; margin: -26px 0 0 -26px; }
     .tc-steal   { right: calc(max(env(safe-area-inset-right, 1rem), 4vw) + 70px); bottom: calc(4vh + 70px); }
     .tc-dribble { right: max(env(safe-area-inset-right, 1rem), 4vw);              bottom: calc(4vh + 70px); }
     .tc-jump    { right: calc(max(env(safe-area-inset-right, 1rem), 4vw) + 70px); }
@@ -75,8 +82,7 @@
 </div>
 
 <div id="touch">
-  <div class="tc tc-l" data-key="left" aria-label="Left">◀</div>
-  <div class="tc tc-r" data-key="right" aria-label="Right">▶</div>
+  <div class="joy" id="joy" aria-label="Move joystick"><span class="joy-up">▲</span><div class="joy-knob" id="joyKnob"></div></div>
   <div class="tc tc-steal" data-key="steal" aria-label="Steal">STEAL</div>
   <div class="tc tc-dribble" data-key="dribble" aria-label="Dribble">DRIB</div>
   <div class="tc tc-jump" data-key="jump" aria-label="Jump">JUMP</div>
@@ -99,7 +105,7 @@
       <button class="diff-btn" data-level="veryhard">Very Hard</button>
       <button class="diff-btn" data-level="impossible">Impossible</button>
     </div>
-    <div class="ctrl-hint">Touch pad · Keys: A/D · W jump · Space shoot · O steal · P dribble (sprint)</div>
+    <div class="ctrl-hint">Touch: joystick to run, push it up to jump · Keys: A/D · W jump · Space shoot · O steal · P dribble (sprint)</div>
   </div>
   <div class="menu-card" data-mode="tournament">
     <h3>Tournament</h3>
@@ -1389,6 +1395,45 @@ touchEls.forEach((el) => {
   el.addEventListener("mouseleave", end);
 });
 
+// Joystick drives localInputs[0].left/right (and jump when pushed up)
+const joy = document.getElementById("joy");
+const joyKnob = document.getElementById("joyKnob");
+let joyPointer = null, joyJump = false;
+function joySet(dx, dy) {
+  const r = joy.clientWidth / 2;
+  const d = Math.hypot(dx, dy);
+  const max = r * 0.62;
+  if (d > max) { dx = dx / d * max; dy = dy / d * max; }
+  joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+  const nx = dx / max, ny = dy / max;
+  localInputs[0].left = nx < -0.3;
+  localInputs[0].right = nx > 0.3;
+  const up = ny < -0.6;
+  if (up !== joyJump) { joyJump = up; localInputs[0].jump = up; }
+}
+function joyRelease() {
+  joyPointer = null;
+  joy.classList.remove("held");
+  joyKnob.style.transform = "";
+  localInputs[0].left = localInputs[0].right = false;
+  if (joyJump) { joyJump = false; localInputs[0].jump = false; }
+}
+function joyMove(e) {
+  const rc = joy.getBoundingClientRect();
+  joySet(e.clientX - (rc.left + rc.width / 2), e.clientY - (rc.top + rc.height / 2));
+}
+joy.addEventListener("pointerdown", (e) => {
+  e.preventDefault();
+  joyPointer = e.pointerId;
+  joy.classList.add("held");
+  try { joy.setPointerCapture(e.pointerId); } catch (err) {}
+  joyMove(e);
+});
+joy.addEventListener("pointermove", (e) => { if (e.pointerId === joyPointer) { e.preventDefault(); joyMove(e); } });
+joy.addEventListener("pointerup", (e) => { if (e.pointerId === joyPointer) joyRelease(); });
+joy.addEventListener("pointercancel", (e) => { if (e.pointerId === joyPointer) joyRelease(); });
+joy.addEventListener("lostpointercapture", () => { if (joyPointer !== null) joyRelease(); });
+
 // ============================================================
 // MAIN LOOP
 // ============================================================
@@ -1597,6 +1642,7 @@ function goMenu() {
   document.getElementById("hostStatus").style.display = "none";
   document.getElementById("joinStatus").style.display = "none";
   for (let i = 0; i < 2; i++) { localInputs[i] = emptyInput(); }
+  joyRelease();
   // clear any active touch button states
   document.querySelectorAll(".tc.active").forEach((el) => el.classList.remove("active"));
 }
